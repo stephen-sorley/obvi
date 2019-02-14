@@ -32,12 +32,58 @@ cmake_minimum_required(VERSION 3.13...3.14)
 
 include_guard(DIRECTORY)
 
-if(WIN32)
-    if(NOT EXISTS "C:\Qt")
+if(CMAKE_HOST_WIN32)
+    set(qtpath "C:/Qt")
+    if(NOT EXISTS "${qtpath}")
         return()
     endif()
     
-elseif(APPLE)
+    # Each installed version of Qt will have a subdir with the version number as the name.
+    # Ex: Qt v5.12.0 is installed into C:\Qt\5.12.0 on Windows.
+    file(GLOB dirs RELATIVE "${qtpath}" "${qtpath}/*.*.*")
+    
+    # Find the latest version.
+    set(max_ver)
+    foreach(dir ${dirs})
+        if(IS_DIRECTORY "${qtpath}/${dir}" AND dir MATCHES "[0-9]+\.[0-9]+\.[0-9]+")
+            if((NOT max_ver) OR (dir VERSION_GREATER max_ver))
+                set(max_ver "${dir}")
+            endif()
+        endif()
+    endforeach()
+    if(NOT max_ver)
+        return()
+    endif()
+    string(APPEND qtpath "/${max_ver}")
+    
+    # Inside the dir for the latest version, get list of all subdirs - each subdir is an installation
+    # for a different compiler/architecture. Looks like this: C:/Qt/5.12.0/msvc2017_64
+    
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(bitness _64)
+    else()
+        set(bitness)
+    endif()
+    
+    if(MSVC)
+        set(guess)
+        if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.00) # VS 2015, VS 2017 or newer
+            set(guess "${qtpath}/msvc2017${bitness}")
+            if(NOT EXISTS ${guess})
+                set(guess "${qtpath}/msvc2015${bitness}")
+                if(NOT EXISTS ${guess})
+                    set(guess)
+                endif()
+            endif()
+        endif()
+        if(guess)
+            list(APPEND CMAKE_PREFIX_PATH "${guess}")
+        endif()
+        
+    # TODO: add MinGW, android options if we eventually need to support those.
+    endif()
+    
+elseif(CMAKE_HOST_APPLE)
     
 else() #Linux, BSD, Cygwin, etc.
     
