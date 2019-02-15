@@ -2,6 +2,7 @@
 #define OBVI_VEC3_HPP
 
 #include <cmath>
+#include <iostream>
 
 namespace obvi {
 
@@ -9,12 +10,12 @@ template<typename real>
 struct vec3
 {
     real pt[3];
-    
+
     vec3(real x=0, real y=0, real z=0) : pt{x,y,z} {}
-    
+
     template<typename T>
-    vec3(const vec3<T> v) : pt{(real)v.pt[0], (real)v.pt[1], (real)v.pt[2]} {}
-    
+    vec3(const vec3<T> &v) : pt{real(v.pt[0]), real(v.pt[1]), real(v.pt[2])} {}
+
     real& x() { return pt[0]; }
     const real& x() const { return pt[0]; }
 
@@ -24,6 +25,11 @@ struct vec3
     real& z() { return pt[2]; }
     const real& z() const { return pt[2]; }
 
+    friend std::ostream& operator<<(std::ostream& os, const vec3& v) {
+        os << '[' << v.x() << ", " << v.y() << ", " << v.z() << ']';
+        return os;
+    }
+
     // Negation
     vec3 operator-() const {
         vec3 ret;
@@ -32,7 +38,7 @@ struct vec3
         ret.p[2] = -pt[2];
         return ret;
     }
-    
+
     // Addition
     vec3& operator+=(const vec3& rhs) {
         pt[0] += rhs.pt[0];
@@ -56,7 +62,7 @@ struct vec3
         ret += rhs;
         return ret;
     }
-    
+
     // Subtraction
     vec3& operator-=(const vec3& rhs) {
         pt[0] -= rhs.pt[0];
@@ -80,7 +86,7 @@ struct vec3
         ret -= rhs;
         return ret;
     }
-    
+
     // Scalar Multiplication
     vec3& operator*=(const real& rhs) {
         pt[0] *= rhs;
@@ -93,7 +99,7 @@ struct vec3
         ret *= rhs;
         return ret;
     }
-    
+
     // Scalar Division
     vec3& operator/=(const real& rhs) {
         pt[0] /= rhs;
@@ -106,12 +112,12 @@ struct vec3
         ret /= rhs;
         return ret;
     }
-    
+
     // Other vector operations
     real dot(const vec3& rhs) const {
         return pt[0]*rhs.pt[0] + pt[1]*rhs.pt[1] + pt[2]*rhs.pt[2];
     }
-    
+
     vec3 cross(const vec3& rhs) const {
         return vec3(
             y()*rhs.z() - z()*rhs.y(),
@@ -119,11 +125,11 @@ struct vec3
             x()*rhs.y() - y()*rhs.x()
         );
     }
-    
+
     real normsqd() const {
-        return pt[0]*pt[0] + pt[1]*pt[1] + pt[2]*pt[2];
+        return this->dot(*this);
     }
-    
+
     vec3& normalize() {
         return *this /= sqrt(normsqd());
     }
