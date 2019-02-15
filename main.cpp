@@ -25,6 +25,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <obvi/util/vec3.hpp>
+
 int main(int argc, char *argv[])
 {
     (void)argc; (void)argv;

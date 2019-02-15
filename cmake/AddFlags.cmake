@@ -83,7 +83,6 @@ else()
         _int_add_flags_compiler(LANGS C CXX FLAGS
             -Wconversion
             -Wdouble-promotion
-            -Wfloat-equal
             -Wsign-conversion
         )
     else()
