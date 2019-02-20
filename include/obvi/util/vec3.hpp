@@ -131,10 +131,10 @@ struct vec3
     }
 
     vec3& normalize() {
-        return *this /= sqrt(normsqd());
+        return *this /= std::sqrt(normsqd());
     }
     vec3 normalized() const {
-        return *this / sqrt(normsqd());
+        return *this / std::sqrt(normsqd());
     }
 };
 
