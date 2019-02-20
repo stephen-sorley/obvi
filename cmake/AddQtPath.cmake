@@ -1,5 +1,5 @@
 # Search common locations for Qt, and add the most recent version to CMAKE_MODULE_PATH if found.
-# 
+#
 # You still need to call find_package(Qt ...) after including this file. This file just tries to
 # ensure that the find_package call will find the newest version of Qt that matches the compiler
 # you're building with. This is entirely optional - if no matching version is found, no changes
@@ -32,16 +32,22 @@ cmake_minimum_required(VERSION 3.13...3.14)
 
 include_guard(DIRECTORY)
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(bitness _64)
+else()
+    set(bitness)
+endif()
+
 if(CMAKE_HOST_WIN32)
     set(qtpath "C:/Qt")
     if(NOT EXISTS "${qtpath}")
         return()
     endif()
-    
+
     # Each installed version of Qt will have a subdir with the version number as the name.
     # Ex: Qt v5.12.0 is installed into C:\Qt\5.12.0 on Windows.
     file(GLOB dirs RELATIVE "${qtpath}" "${qtpath}/*.*.*")
-    
+
     # Find the latest version.
     set(max_ver)
     foreach(dir ${dirs})
@@ -55,16 +61,9 @@ if(CMAKE_HOST_WIN32)
         return()
     endif()
     string(APPEND qtpath "/${max_ver}")
-    
+
     # Inside the dir for the latest version, get list of all subdirs - each subdir is an installation
     # for a different compiler/architecture. Looks like this: C:/Qt/5.12.0/msvc2017_64
-    
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        set(bitness _64)
-    else()
-        set(bitness)
-    endif()
-    
     if(MSVC)
         set(guess)
         if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.00) # VS 2015, VS 2017 or newer
@@ -79,12 +78,33 @@ if(CMAKE_HOST_WIN32)
         if(guess)
             list(APPEND CMAKE_PREFIX_PATH "${guess}")
         endif()
-        
+
     # TODO: add MinGW, android options if we eventually need to support those.
     endif()
-    
+
 elseif(CMAKE_HOST_APPLE)
-    
+    #TODO: add MacOS/iOS support (if needed).
 else() #Linux, BSD, Cygwin, etc.
-    
+
+    # Look for manual installations of Qt (prefer these to system installs).
+    file(GLOB dirs "$ENV{HOME}/[Qq][Tt]*/*.*.*" /usr/local/[Qq][Tt]*/*.*.* /opt/[Qq][Tt]*/*.*.*)
+
+    set(max_ver)
+    set(max_ver_dir)
+    foreach(dir ${dirs})
+        if(IS_DIRECTORY "${dir}" AND dir MATCHES "[0-9]+\.[0-9]+\.[0-9]+")
+            if((NOT max_ver) OR CMAKE_MATCH_0 VERSION_GREATER max_ver)
+                set(max_ver     "${CMAKE_MATCH_0}")
+                set(max_ver_dir "${dir}")
+            endif()
+        endif()
+    endforeach()
+    if(NOT max_ver_dir)
+        return()
+    endif()
+
+    set(guess "${max_ver_dir}/gcc${bitness}")
+    if(EXISTS "${guess}")
+        list(APPEND CMAKE_PREFIX_PATH "${guess}")
+    endif()
 endif()
