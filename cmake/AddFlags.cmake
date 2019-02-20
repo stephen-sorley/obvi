@@ -39,20 +39,20 @@ if(MSVC)
             /wd4267 # Disable warnings about converting size_t to a smaller type
         )
     endif()
-    
+
     # Note: the useful hardening flags are all enabled by default on modern versions of Visual Studio.
-    
+
 else()
     # GCC, Clang, Intel, etc.
     _int_add_flags_compiler(LANGS C CXX FLAGS
         # Hide symbols by default (like on Windows), instead of exposing everything.
         -fvisibility=hidden
         -fvisibility-inlines-hidden
-    
+
         # Warning flags.
         -Wall
         -Wextra
-        
+
         -Wcast-align
         -Wformat-security
         -Wlogical-op
@@ -66,7 +66,7 @@ else()
         -Wunused
         -Wvla
     )
-    
+
     _int_add_flags_compiler(LANGS C FLAGS
         -Winit-self
         -Wjump-misses-init
@@ -74,11 +74,11 @@ else()
         -Wnested-externs
         -Wold-style-definition
         -Wstrict-prototypes
-        
+
         -Werror=implicit-int
         -Werror=implicit-function-declaration
     )
-    
+
     if(ADD_FLAGS_STRICT_WARNINGS)
         _int_add_flags_compiler(LANGS C CXX FLAGS
             -Wconversion
@@ -90,20 +90,25 @@ else()
             -Wno-unused-parameter
         )
     endif()
-    
+
     # Versions of CMake before 3.14 have a bug where it doesn't add "-pie" to executable link lines when
-	# you enable position independent code (only adds "-fPIE", which isn't enough for the GNU linker).
-	#
-	# See: https://gitlab.kitware.com/cmake/cmake/issues/14983
-	# TODO: remove this once minimum supported CMake version is >= 3.14.
-	if(CMAKE_VERSION VERSION_LESS 3.14)
-		if(UNIX AND NOT (APPLE OR ANDROID))
+    # you enable position independent code (only adds "-fPIE", which isn't enough for the GNU linker).
+    #
+    # See: https://gitlab.kitware.com/cmake/cmake/issues/14983
+    # TODO: remove this once minimum supported CMake version is >= 3.14.
+    if(CMAKE_VERSION VERSION_LESS 3.14)
+        if(UNIX AND NOT (APPLE OR ANDROID))
             _int_add_flags_linker(CONFIGS EXE FLAGS
                 -pie
             )
-		endif()
-	endif()
-    
+        endif()
+    else()
+        # For CMake >=3.14, must call check_pie_supported in order for any extra required linker
+        # flags to be added to PIE executables.
+        include(CheckPIESupported)
+        check_pie_supported()
+    endif()
+
     # Set additional hardening flags, if requested.
     if(ADD_FLAGS_HARDEN)
         _int_add_flag_options_compiler(LANGS C CXX FLAG_OPTIONS
@@ -127,7 +132,7 @@ else()
             "-Wl,-z,relro,-z,now"
         )
     endif()
-    
+
     # Force colorized output, even when output has been redirected via pipe.
     _int_add_flag_options_compiler(LANGS C CXX FLAG_OPTIONS
         -fdiagnostics-color=always # GCC
