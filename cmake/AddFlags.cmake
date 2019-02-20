@@ -2,8 +2,33 @@
 #
 # Adds project-wide compiler and linker flags.
 #
-# ADD_FLAGS_STRICT_WARNINGS: display type conversion and other verbose warnings (defaults to FALSE)
-# ADD_FLAGS_HARDEN: add flags to security harden the code (defaults to FALSE)
+# Options:
+#   ADD_FLAGS_STRICT_WARNINGS: display type conversion and other verbose warnings (defaults to FALSE)
+#   ADD_FLAGS_HARDEN: add flags to security harden the code (defaults to FALSE)
+#
+# # # # # # # # # # # #
+# The MIT License (MIT)
+#
+# Copyright (c) 2019 Stephen Sorley
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+# # # # # # # # # # # #
 #
 
 cmake_minimum_required(VERSION 3.13...3.14)
@@ -16,7 +41,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/AddFlagsHelpers.cmake")
 # when building shared libs).
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
-# Use interprocedural optimization for release builds, if supported by compiler.
+# Use interprocedural optimization for release builds, if supported by toolchain.
 include(CheckIPOSupported)
 check_ipo_supported(RESULT res OUTPUT out)
 if(res)
@@ -116,8 +141,8 @@ else()
             "-fstack-protector --param=ssp-buffer-size=4" # Fall back to older flag if strong protector isn't supported.
         )
 
-        _int_add_flags_compiler(LANGS C CXX FLAGS
-            -D_FORTIFY_SOURCE=2 # Adds additional compile-time and runtime buffer overflow checks.
+        add_compile_definitions(
+            _FORTIFY_SOURCE=2 # Adds additional compile-time and runtime buffer overflow checks.
         )
 
         _int_add_flags_linker(FLAGS

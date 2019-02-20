@@ -1,4 +1,34 @@
-# Helper functions for AddFlags.cmake
+# AddFlagsHelpers.cmake
+#
+# Provides a few helper functions for AddFlags.cmake:
+#   _int_add_flags_linker
+#   _int_add_flags_compiler
+#   _int_add_flag_options_compiler
+#
+# # # # # # # # # # # #
+# The MIT License (MIT)
+#
+# Copyright (c) 2019 Stephen Sorley
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+# # # # # # # # # # # #
+#
 
 cmake_minimum_required(VERSION 3.13...3.14)
 
@@ -38,7 +68,7 @@ function(_int_add_flags_linker)
     else()
         list(TRANSFORM ${arg_CONFIGS} TOUPPER)
     endif()
-    
+
     foreach(flag ${arg_FLAGS})
         # Check to see if linker flag is supported (use C if enabled, or CXX if enabled, or Fortran if enabled).
         #
@@ -55,7 +85,7 @@ function(_int_add_flags_linker)
         else()
             set(${var} FALSE)
         endif()
-        
+
         # If linker flag is supported, add it to the linker flag lists for every requested configuration.
         if(${var})
             foreach(config ${arg_CONFIGS})
@@ -63,12 +93,12 @@ function(_int_add_flags_linker)
                 if(${dest_name})
                     # If destination var isn't empty, add a space before adding the new flag.
                     string(APPEND ${dest_name} " ")
-                endif ()
+                endif()
                 string(APPEND ${dest_name} "${flag}")
             endforeach()
         endif()
     endforeach()
-    
+
     # Push any changes to linker flags variables up to caller's scope.
     foreach(config ${arg_CONFIGS})
         set(dest_name CMAKE_${config}_LINKER_FLAGS)
@@ -106,6 +136,9 @@ function(_int_add_flags_compiler)
     if(NOT arg_CONFIGS)
         set(arg_CONFIGS "NONE")
     else()
+        # Change all config names to uppercase. This is required because the per-config versions
+        # of the various variables that store flags use uppercase for the config name
+        # (e.g. CMAKE_CXX_FLAGS_RELEASE).
         list(TRANSFORM ${configs_var} TOUPPER)
     endif()
 
@@ -123,7 +156,7 @@ function(_int_add_flags_compiler)
                 check_cxx_compiler_flag("${flag}" ${varlang})
             elseif(lang STREQUAL "Fortran")
                 check_fortran_compiler_flag("${flag}" ${varlang})
-            else ()
+            else()
                 set(${varlang} FALSE)
             endif()
 
@@ -137,13 +170,13 @@ function(_int_add_flags_compiler)
                     if(${dest_name})
                         # If destination var isn't empty, add a space before adding the new flag.
                         string(APPEND ${dest_name} " ")
-                    endif ()
+                    endif()
                     string(APPEND ${dest_name} "${flag}")
                 endforeach()
             endif()
          endforeach()
     endforeach()
-    
+
     # Push any changes to compiler flags variables up to caller's scope.
     foreach(lang ${arg_LANGS})
         set(dest_name CMAKE_${lang}_FLAGS)
@@ -162,11 +195,11 @@ endfunction()
 #   CONFIGS:      build types for which the compiler flags should be used (Debug, Release, etc.). Default: all configs
 function(_int_add_flag_options_compiler)
     cmake_parse_arguments(arg "" "" "FLAG_OPTIONS;LANGS;CONFIGS" ${ARGN})
-    
+
     if(NOT arg_FLAG_OPTIONS)
         return()
     endif()
-    
+
     # Filter out langs that aren't enabled.
     set(temp_langs "${arg_LANGS}")
     set(arg_LANGS)
@@ -175,7 +208,7 @@ function(_int_add_flag_options_compiler)
             list(APPEND arg_LANGS "${lang}")
         endif()
     endforeach()
-    
+
     if(NOT arg_LANGS)
         return()
     endif()
@@ -183,9 +216,12 @@ function(_int_add_flag_options_compiler)
     if(NOT arg_CONFIGS)
         set(arg_CONFIGS "NONE")
     else()
+        # Change all config names to uppercase. This is required because the per-config versions
+        # of the various variables that store flags use uppercase for the config name
+        # (e.g. CMAKE_CXX_FLAGS_RELEASE).
         list(TRANSFORM ${configs_var} TOUPPER)
     endif()
-    
+
     foreach(lang ${arg_LANGS})
         foreach(flag ${arg_FLAG_OPTIONS})
             # Use flag in variable name to ensure uniqueness, normalize to a valid C identifier to
@@ -200,7 +236,7 @@ function(_int_add_flag_options_compiler)
                 check_cxx_compiler_flag("${flag}" ${varlang})
             elseif(lang STREQUAL "Fortran")
                 check_fortran_compiler_flag("${flag}" ${varlang})
-            else ()
+            else()
                 set(${varlang} FALSE)
             endif()
 
@@ -214,19 +250,18 @@ function(_int_add_flag_options_compiler)
                     if(${dest_name})
                         # If destination var isn't empty, add a space before adding the new flag.
                         string(APPEND ${dest_name} " ")
-                    endif ()
+                    endif()
                     string(APPEND ${dest_name} "${flag}")
                 endforeach()
-                
+
                 break() # Once we hit a set of flags that works for this language, stop the loop.
             endif()
          endforeach()
     endforeach()
-    
+
     # Push any changes to compiler flags variables up to caller's scope.
     foreach(lang ${arg_LANGS})
         set(dest_name CMAKE_${lang}_FLAGS)
         set(${dest_name} "${${dest_name}}" PARENT_SCOPE)
     endforeach()
-    
 endfunction()
