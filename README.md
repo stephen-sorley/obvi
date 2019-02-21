@@ -10,8 +10,8 @@ I'll probably include support for a CI system like AppVeyor at a later date.
 
 ### Third-party dependencies
 
-*[Catch2](https://github.com/catchorg/Catch2):
- Header-only unit testing framework (bundled into repo)
+[Catch2](https://github.com/catchorg/Catch2):
+Header-only unit testing framework (bundled into repo)
 
-*[Qt](https://www.qt.io/download):
- Cross-platform GUI library
+[Qt](https://www.qt.io/download):
+Cross-platform GUI library
