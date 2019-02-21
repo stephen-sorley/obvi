@@ -1,4 +1,9 @@
-/* The MIT License (MIT)
+/* Header-only class that implements a 3x3 matrix.
+ *
+ * Used for 3D geometry calculations.
+ *
+ * * * * * * * * * * * *
+ * The MIT License (MIT)
  *
  * Copyright (c) 2019 Stephen Sorley
  *
@@ -19,6 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ * * * * * * * * * * * *
  */
 #ifndef OBVI_MAT3_HPP
 #define OBVI_MAT3_HPP
@@ -47,15 +53,29 @@ struct mat3
     mat3(const mat3<T> &m)
         : rows{vec3<real>(m.rows[0]), vec3<real>(m.rows[1]), vec3<real>(m.rows[2])} {}
 
+    void set(real a11, real a12, real a13,
+             real a21, real a22, real a23,
+             real a31, real a32, real a33) {
+        rows[0].set(a11,a12,a13);
+        rows[1].set(a21,a22,a23);
+        rows[2].set(a31,a32,a33);
+    }
+
+    void set(const vec3<real>& row0, const vec3<real>& row1, const vec3<real>& row2) {
+        rows[0] = row0;
+        rows[1] = row1;
+        rows[2] = row2;
+    }
+
     real& operator()(int rowIdx, int colIdx) { return rows[rowIdx].pt[colIdx]; }
     const real& operator()(int rowIdx, int colIdx) const { return rows[rowIdx].pt[colIdx]; }
 
-    vec3<real> col(int colIdx) {
+    vec3<real> col(int colIdx) const {
         return vec3<real>(rows[0].pt[colIdx], rows[1].pt[colIdx], rows[2].pt[colIdx]);
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const mat3& v) {
-        os << '{' << v.rows[0] << ", " << v.rows[1] << ", " << v.rows[2] << '}';
+    friend std::ostream& operator<<(std::ostream& os, const mat3& m) {
+        os << '{' << m.rows[0] << ", " << m.rows[1] << ", " << m.rows[2] << '}';
         return os;
     }
 
@@ -67,24 +87,24 @@ struct mat3
     }
 
     static mat3 xrot(real angle_radians) {
-        real s = sin(angle_radians);
-        real c = cos(angle_radians);
+        real s = std::sin(angle_radians);
+        real c = std::cos(angle_radians);
         return mat3(1,0,0,
                     0,c,-s,
                     0,s,c);
     }
 
     static mat3 yrot(real angle_radians) {
-        real s = sin(angle_radians);
-        real c = cos(angle_radians);
+        real s = std::sin(angle_radians);
+        real c = std::cos(angle_radians);
         return mat3(c,0,s,
                     0,1,0,
                     -s,0,c);
     }
 
     static mat3 zrot(real angle_radians) {
-        real s = sin(angle_radians);
-        real c = cos(angle_radians);
+        real s = std::sin(angle_radians);
+        real c = std::cos(angle_radians);
         return mat3(c,-s,0,
                     s,c,0,
                     0,0,1);
@@ -107,7 +127,7 @@ struct mat3
         ret += rhs;
         return ret;
     }
-    mat3 operator+=(const real& rhs) const {
+    mat3& operator+=(const real& rhs) {
         rows[0] += rhs;
         rows[1] += rhs;
         rows[2] += rhs;
@@ -131,7 +151,7 @@ struct mat3
         ret -= rhs;
         return ret;
     }
-    mat3 operator-=(const real& rhs) const {
+    mat3& operator-=(const real& rhs) {
         rows[0] -= rhs;
         rows[1] -= rhs;
         rows[2] -= rhs;
@@ -144,7 +164,7 @@ struct mat3
     }
 
     // Multiplication.
-    mat3 operator*=(const mat3& rhs) {
+    mat3& operator*=(const mat3& rhs) {
         for(int i=0; i<3; ++i) {
             rows[i].set(
                 rows[i].dot(rhs(0,0), rhs(1,0), rhs(2,0)),
@@ -152,13 +172,14 @@ struct mat3
                 rows[i].dot(rhs(0,2), rhs(1,2), rhs(2,2))
             );
         }
+        return *this;
     }
     mat3 operator*(const mat3& rhs) const {
         mat3 ret = *this;
         ret *= rhs;
         return ret;
     }
-    mat3 operator*=(const real& rhs) {
+    mat3& operator*=(const real& rhs) {
         rows[0] *= rhs;
         rows[1] *= rhs;
         rows[2] *= rhs;
@@ -171,7 +192,7 @@ struct mat3
     }
 
     // Division (scalar only).
-    mat3 operator/=(const real& rhs) {
+    mat3& operator/=(const real& rhs) {
         rows[0] /= rhs;
         rows[1] /= rhs;
         rows[2] /= rhs;
@@ -179,7 +200,7 @@ struct mat3
     }
     mat3 operator/(const real& rhs) const {
         mat3 ret = *this;
-        ret *= rhs;
+        ret /= rhs;
         return ret;
     }
 
@@ -194,28 +215,28 @@ struct mat3
     }
 
     vec3<real> diag() const {
-        const real& m = *this;
+        const mat3& m = *this;
         return vec3<real>(m(0,0), m(1,1), m(2,2));
+    }
+    friend vec3<real> diag(const mat3& m) {
+        return m.diag();
     }
 
     real det() const {
-        const real& m = *this;
-        return   m(1,1) * (m(2,2)*m(3,3) - m(2,3)*m(3,2))
-               - m(1,2) * (m(2,1)*m(3,3) - m(2,3)*m(3,1))
-               + m(1,3) * (m(2,1)*m(3,2) - m(2,2)*m(3,1));
+        const mat3& m = *this;
+        return   m(0,0) * (m(1,1)*m(2,2) - m(1,2)*m(2,1))
+               - m(0,1) * (m(1,0)*m(2,2) - m(1,2)*m(2,0))
+               + m(0,2) * (m(1,0)*m(2,1) - m(1,1)*m(2,0));
+    }
+    friend real det(const mat3& m) {
+        return m.det();
     }
 
-    mat3& transpose() {
-        real& m = *this;
-        std::swap(m(1,0), m(0,1));
-        std::swap(m(2,0), m(0,2));
-        std::swap(m(2,1), m(1,2));
+    mat3 trans() const {
+        return mat3(col(0), col(1), col(2));
     }
-
-    mat3 transposed() const {
-        mat3 ret = *this;
-        ret.transpose;
-        return ret;
+    friend mat3 trans(const mat3& m) {
+        return m.trans();
     }
 };
 

@@ -27,8 +27,10 @@
 # # # # # # # # # # # #
 
 add_executable(tests
-    main.cpp
-    geom.cpp
+    tests_main.cpp
+
+    test_vec3.cpp
+    test_mat3.cpp
 )
 
 target_link_libraries(tests PRIVATE

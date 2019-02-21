@@ -1,4 +1,7 @@
-/* The MIT License (MIT)
+/* Unit tests for vec3 (util library).
+ *
+ * * * * * * * * * * * *
+ * The MIT License (MIT)
  *
  * Copyright (c) 2019 Stephen Sorley
  *
@@ -19,6 +22,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ * * * * * * * * * * * *
  */
 
 #include <catch2/catch.hpp>
@@ -27,38 +31,33 @@
 using obvi::vec3;
 using namespace Catch::literals; // To get "_a" UDL for approximate floating-point values.
 
+#define VEC_EQUAL(v, v0, v1, v2) \
+    REQUIRE( v.pt[0] == v0 ); \
+    REQUIRE( v.pt[1] == v1 ); \
+    REQUIRE( v.pt[2] == v2 );
+
+
 TEMPLATE_TEST_CASE("vec3 set and get", "[vec3]", float, double) {
     vec3<TestType> v;
 
-    REQUIRE( v.x() == TestType(0) );
-    REQUIRE( v.y() == TestType(0) );
-    REQUIRE( v.z() == TestType(0) );
+    VEC_EQUAL(v, 0, 0, 0);
 
     SECTION( "array and named element access are the same" ) {
         v.pt[0] = TestType(1.1);
         v.pt[1] = TestType(2.2);
         v.pt[2] = TestType(3.3);
-
-        REQUIRE( v.pt[0] == v.x() );
-        REQUIRE( v.pt[1] == v.y() );
-        REQUIRE( v.pt[2] == v.z() );
+        VEC_EQUAL(v, v.x(), v.y(), v.z());
     }
 
     SECTION( "set method works" ) {
         v.set(TestType(4.4), TestType(5.5), TestType(6.6));
-
-        REQUIRE( v.pt[0] == TestType(4.4) );
-        REQUIRE( v.pt[1] == TestType(5.5) );
-        REQUIRE( v.pt[2] == TestType(6.6) );
+        VEC_EQUAL(v, TestType(4.4), TestType(5.5), TestType(6.6));
     }
 
     SECTION( "initialization from different type works" ) {
         vec3<long double> w(1.0L,2.0L,3.6L);
         v = vec3<TestType>(w);
-
-        REQUIRE( v.x() == TestType(w.x()) );
-        REQUIRE( v.y() == TestType(w.y()) );
-        REQUIRE( v.z() == TestType(w.z()) );
+        VEC_EQUAL(v, TestType(w.x()), TestType(w.y()), TestType(w.z()))
     }
 }
 
@@ -71,92 +70,68 @@ TEMPLATE_TEST_CASE("vec3 math", "[vec3]", float, double) {
     SECTION( "add" ) {
         SECTION( "vector in-place" ) {
             v += w;
-            REQUIRE( v.x() == 5.0_a );
-            REQUIRE( v.y() == 7.0_a );
-            REQUIRE( v.z() == 9.0_a );
+            VEC_EQUAL(v, 5.0_a, 7.0_a, 9.0_a);
         }
 
         SECTION( "vector separate" ) {
             v = v + w;
-            REQUIRE( v.x() == 5.0_a );
-            REQUIRE( v.y() == 7.0_a );
-            REQUIRE( v.z() == 9.0_a );
+            VEC_EQUAL(v, 5.0_a, 7.0_a, 9.0_a);
         }
 
         SECTION( "scalar in-place" ) {
             v += s;
-            REQUIRE( v.x() == 3.5_a );
-            REQUIRE( v.y() == 4.5_a );
-            REQUIRE( v.z() == 5.5_a );
+            VEC_EQUAL(v, 3.5_a, 4.5_a, 5.5_a);
         }
 
         SECTION( "scalar separate" ) {
             v = v + s;
-            REQUIRE( v.x() == 3.5_a );
-            REQUIRE( v.y() == 4.5_a );
-            REQUIRE( v.z() == 5.5_a );
+            VEC_EQUAL(v, 3.5_a, 4.5_a, 5.5_a);
         }
     }
 
     SECTION( "subtract" ) {
         SECTION( "vector in-place" ) {
             v -= w;
-            REQUIRE( v.x() == -3.0_a );
-            REQUIRE( v.y() == -3.0_a );
-            REQUIRE( v.z() == -3.0_a );
+            VEC_EQUAL(v, -3.0_a, -3.0_a, -3.0_a);
         }
 
         SECTION( "vector separate" ) {
             v = v - w;
-            REQUIRE( v.x() == -3.0_a );
-            REQUIRE( v.y() == -3.0_a );
-            REQUIRE( v.z() == -3.0_a );
+            VEC_EQUAL(v, -3.0_a, -3.0_a, -3.0_a);
         }
 
         SECTION( "scalar in-place" ) {
             v -= s;
-            REQUIRE( v.x() == -1.5_a );
-            REQUIRE( v.y() == -0.5_a );
-            REQUIRE( v.z() ==  0.5_a );
+            VEC_EQUAL(v, -1.5_a, -0.5_a, 0.5_a);
         }
 
         SECTION( "scalar separate" ) {
             v = v - s;
-            REQUIRE( v.x() == -1.5_a );
-            REQUIRE( v.y() == -0.5_a );
-            REQUIRE( v.z() ==  0.5_a );
+            VEC_EQUAL(v, -1.5_a, -0.5_a, 0.5_a);
         }
     }
 
     SECTION( "multiply" ) {
         SECTION( "scalar in-place" ) {
             v *= s;
-            REQUIRE( v.x() == 2.5_a );
-            REQUIRE( v.y() == 5.0_a );
-            REQUIRE( v.z() == 7.5_a );
+            VEC_EQUAL(v, 2.5_a, 5.0_a, 7.5_a);
         }
 
         SECTION( "scalar separate" ) {
             v = v * s;
-            REQUIRE( v.x() == 2.5_a );
-            REQUIRE( v.y() == 5.0_a );
-            REQUIRE( v.z() == 7.5_a );
+            VEC_EQUAL(v, 2.5_a, 5.0_a, 7.5_a);
         }
     }
 
     SECTION( "divide" ) {
         SECTION( "scalar in-place" ) {
             v /= s;
-            REQUIRE( v.x() == 0.4_a );
-            REQUIRE( v.y() == 0.8_a );
-            REQUIRE( v.z() == 1.2_a );
+            VEC_EQUAL(v, 0.4_a, 0.8_a, 1.2_a);
         }
 
         SECTION( "scalar separate" ) {
             v = v / s;
-            REQUIRE( v.x() == 0.4_a );
-            REQUIRE( v.y() == 0.8_a );
-            REQUIRE( v.z() == 1.2_a );
+            VEC_EQUAL(v, 0.4_a, 0.8_a, 1.2_a);
         }
     }
 
@@ -167,17 +142,13 @@ TEMPLATE_TEST_CASE("vec3 math", "[vec3]", float, double) {
 
     SECTION( "cross product" ) {
         v = v.cross(w);
-        REQUIRE( v.x() == -3.0_a );
-        REQUIRE( v.y() ==  6.0_a );
-        REQUIRE( v.z() == -3.0_a );
+        VEC_EQUAL(v, -3.0_a, 6.0_a, -3.0_a);
     }
 
     SECTION( "2-norm" ) {
         REQUIRE( v.normsqd() == 14.0_a );
 
         w = v.normalized();
-        REQUIRE( w.x() == 0.2672612_a );
-        REQUIRE( w.y() == 0.5345225_a );
-        REQUIRE( w.z() == 0.8017837_a );
+        VEC_EQUAL(w, 0.2672612_a, 0.5345225_a, 0.8017837_a);
     }
 }
