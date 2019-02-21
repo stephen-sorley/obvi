@@ -38,6 +38,12 @@ struct vec3
     template<typename T>
     vec3(const vec3<T> &v) : pt{real(v.pt[0]), real(v.pt[1]), real(v.pt[2])} {}
 
+    void set(real x, real y, real z) {
+        pt[0] = x;
+        pt[1] = y;
+        pt[2] = z;
+    }
+
     real& x() { return pt[0]; }
     const real& x() const { return pt[0]; }
 
@@ -138,6 +144,10 @@ struct vec3
     // Other vector operations
     real dot(const vec3& rhs) const {
         return pt[0]*rhs.pt[0] + pt[1]*rhs.pt[1] + pt[2]*rhs.pt[2];
+    }
+
+    real dot(const real& x, const real& y, const real& z) const {
+        return pt[0]*x + pt[1]*y + pt[2]*z;
     }
 
     vec3 cross(const vec3& rhs) const {

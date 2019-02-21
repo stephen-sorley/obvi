@@ -44,6 +44,14 @@ TEMPLATE_TEST_CASE("vec3 set and get", "[vec3]", float, double) {
         REQUIRE( v.pt[2] == v.z() );
     }
 
+    SECTION( "set method works" ) {
+        v.set(TestType(4.4), TestType(5.5), TestType(6.6));
+
+        REQUIRE( v.pt[0] == TestType(4.4) );
+        REQUIRE( v.pt[1] == TestType(5.5) );
+        REQUIRE( v.pt[2] == TestType(6.6) );
+    }
+
     SECTION( "initialization from different type works" ) {
         vec3<long double> w(1.0L,2.0L,3.6L);
         v = vec3<TestType>(w);
@@ -154,6 +162,7 @@ TEMPLATE_TEST_CASE("vec3 math", "[vec3]", float, double) {
 
     SECTION( "dot product" ) {
         REQUIRE( v.dot(w) == 32.0_a );
+        REQUIRE( v.dot(w.x(), w.y(), w.z()) == 32.0_a );
     }
 
     SECTION( "cross product" ) {
