@@ -1,6 +1,7 @@
-# Unit tests.
+# Utility library
 #
-# These tests use the Catch2 unit testing framework: https://github.com/catchorg/Catch2
+# Contains code for stuff like vector/matrix math, 3D geometry and affine transformations,
+# and basic file I/O.
 #
 # # # # # # # # # # # #
 # The MIT License (MIT)
@@ -26,21 +27,8 @@
 # THE SOFTWARE.
 # # # # # # # # # # # #
 
-add_executable(tests
-    main.cpp
-    geom.cpp
-)
+add_library(util INTERFACE)
 
-target_link_libraries(tests PRIVATE
-    util
+target_include_directories(util INTERFACE
+    "${Obvi_SOURCE_DIR}/include"
 )
-
-target_compile_definitions(tests PRIVATE
-    CATCH_CONFIG_FAST_COMPILE   # Turn off exception translation in normal test cases, ~20% faster
-    #CATCH_CONFIG_WINDOWS_CRTDBG # Enable leak checking using Windows' CRT Debug Heap
-)
-
-# Pass unit tests to CTest using Catch's CMake integration scripts.
-list(APPEND CMAKE_MODULE_PATH "${Obvi_SOURCE_DIR}/include/catch2")
-include(Catch)
-catch_discover_tests(tests)
