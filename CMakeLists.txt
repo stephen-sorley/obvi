@@ -55,6 +55,8 @@ find_package(Qt5 REQUIRED COMPONENTS Widgets)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Build rules.
+include(CTest) # Adds a 'test' phony target for running unit tests (must be in root to work).
+
 add_subdirectory(util)
 add_subdirectory(tests)
 
@@ -66,5 +68,3 @@ target_link_libraries(obvi PRIVATE
     Qt5::Widgets
     util
 )
-
-include(CTest) # Adds a 'test' phony target for running unit tests (must be in root to work).
