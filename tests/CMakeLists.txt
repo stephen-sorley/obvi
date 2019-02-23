@@ -31,6 +31,7 @@ add_executable(tests
 
     test_vec3.cpp
     test_mat3.cpp
+    test_affine3.cpp
 )
 
 target_link_libraries(tests PRIVATE
