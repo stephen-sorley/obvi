@@ -83,8 +83,13 @@ TEMPLATE_TEST_CASE("vec3 math", "[vec3]", float, double) {
             VEC3_EQUAL(v, 3.5_a, 4.5_a, 5.5_a);
         }
 
-        SECTION( "scalar separate" ) {
+        SECTION( "scalar separate right" ) {
             v = v + s;
+            VEC3_EQUAL(v, 3.5_a, 4.5_a, 5.5_a);
+        }
+
+        SECTION( "scalar separate left" ) {
+            v = s + v;
             VEC3_EQUAL(v, 3.5_a, 4.5_a, 5.5_a);
         }
     }
@@ -117,8 +122,13 @@ TEMPLATE_TEST_CASE("vec3 math", "[vec3]", float, double) {
             VEC3_EQUAL(v, 2.5_a, 5.0_a, 7.5_a);
         }
 
-        SECTION( "scalar separate" ) {
+        SECTION( "scalar separate right" ) {
             v = v * s;
+            VEC3_EQUAL(v, 2.5_a, 5.0_a, 7.5_a);
+        }
+
+        SECTION( "scalar separate left" ) {
+            v = s * v;
             VEC3_EQUAL(v, 2.5_a, 5.0_a, 7.5_a);
         }
     }

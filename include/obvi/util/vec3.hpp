@@ -91,10 +91,12 @@ struct vec3
         pt[2] += rhs;
         return *this;
     }
-    vec3 operator+(const real& rhs) const {
-        vec3 ret = *this;
-        ret += rhs;
-        return ret;
+    friend vec3 operator+(const vec3& vec, const real& scalar) {
+        vec3 ret = vec;
+        return ret += scalar;
+    }
+    friend vec3 operator+(const real& scalar, const vec3& vec) {
+        return vec + scalar;
     }
 
     // Subtraction
@@ -128,10 +130,13 @@ struct vec3
         pt[2] *= rhs;
         return *this;
     }
-    vec3 operator*(const real& rhs) const {
-        vec3 ret = *this;
-        ret *= rhs;
+    friend vec3 operator*(const vec3& vec, const real& scalar) {
+        vec3 ret = vec;
+        ret *= scalar;
         return ret;
+    }
+    friend vec3 operator*(const real& scalar, const vec3& vec) {
+        return vec * scalar;
     }
 
     // Scalar Division
