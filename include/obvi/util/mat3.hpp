@@ -134,10 +134,12 @@ struct mat3
         rows[2] += rhs;
         return *this;
     }
-    mat3 operator+(const real& rhs) const {
-        mat3 ret = *this;
-        ret += rhs;
-        return ret;
+    friend mat3 operator+(const mat3& mat, const real& scalar) {
+        mat3 ret = mat;
+        return ret += scalar;
+    }
+    friend mat3 operator+(const real& scalar, const mat3& mat) {
+        return mat + scalar;
     }
 
     // Subtraction.
@@ -186,10 +188,12 @@ struct mat3
         rows[2] *= rhs;
         return *this;
     }
-    mat3 operator*(const real& rhs) const {
-        mat3 ret = *this;
-        ret *= rhs;
-        return ret;
+    friend mat3 operator*(const mat3& mat, const real& scalar) {
+        mat3 ret = mat;
+        return ret *= scalar;
+    }
+    friend mat3 operator*(const real& scalar, const mat3& mat) {
+        return mat * scalar;
     }
 
     // Division (scalar only).

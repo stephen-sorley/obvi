@@ -145,8 +145,12 @@ TEMPLATE_TEST_CASE("mat3 math", "[mat3]", float, double) {
             m += s;
             MAT3_EQUAL(m, 3.5_a,4.5_a,5.5_a, 6.5_a,7.5_a,8.5_a, 9.5_a,10.5_a,11.5_a);
         }
-        SECTION( "scalar separate" ) {
+        SECTION( "scalar separate right" ) {
             m = m + s;
+            MAT3_EQUAL(m, 3.5_a,4.5_a,5.5_a, 6.5_a,7.5_a,8.5_a, 9.5_a,10.5_a,11.5_a);
+        }
+        SECTION( "scalar separate left" ) {
+            m = s + m;
             MAT3_EQUAL(m, 3.5_a,4.5_a,5.5_a, 6.5_a,7.5_a,8.5_a, 9.5_a,10.5_a,11.5_a);
         }
     }
@@ -187,8 +191,12 @@ TEMPLATE_TEST_CASE("mat3 math", "[mat3]", float, double) {
             m *= s;
             MAT3_EQUAL(m, 2.5_a,5.0_a,7.5_a, 10.0_a,12.5_a,15.0_a, 17.5_a,20.0_a,22.5_a);
         }
-        SECTION( "scalar separate" ) {
+        SECTION( "scalar separate right" ) {
             m = m * s;
+            MAT3_EQUAL(m, 2.5_a,5.0_a,7.5_a, 10.0_a,12.5_a,15.0_a, 17.5_a,20.0_a,22.5_a);
+        }
+        SECTION( "scalar separate left" ) {
+            m = s * m;
             MAT3_EQUAL(m, 2.5_a,5.0_a,7.5_a, 10.0_a,12.5_a,15.0_a, 17.5_a,20.0_a,22.5_a);
         }
     }
