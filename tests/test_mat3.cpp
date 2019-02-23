@@ -226,10 +226,29 @@ TEMPLATE_TEST_CASE("mat3 math", "[mat3]", float, double) {
     }
 
     SECTION( "transpose" ) {
-        n = m.trans();
-        MAT3_EQUAL(n, 1,4,7, 2,5,8, 3,6,9);
+        SECTION( "in-place" ) {
+            n = m;
+            n.trans_inplace();
+            MAT3_EQUAL(n, 1,4,7, 2,5,8, 3,6,9);
 
-        n = trans(m);
-        MAT3_EQUAL(n, 1,4,7, 2,5,8, 3,6,9);
+            n = m;
+            trans_inplace(n);
+            MAT3_EQUAL(n, 1,4,7, 2,5,8, 3,6,9);
+        }
+
+        SECTION( "separate" ) {
+            n = m.trans();
+            MAT3_EQUAL(n, 1,4,7, 2,5,8, 3,6,9);
+
+            n = trans(m);
+            MAT3_EQUAL(n, 1,4,7, 2,5,8, 3,6,9);
+        }
+    }
+
+    SECTION( "is orthogonal" ) {
+        REQUIRE( is_orthogonal(mat3<TestType>::identity()) );
+        REQUIRE( is_orthogonal(mat3<TestType>::xrot(TestType(0.4))) );
+        REQUIRE( is_orthogonal(mat3<TestType>::yrot(TestType(0.4))) );
+        REQUIRE( is_orthogonal(mat3<TestType>::zrot(TestType(0.4))) );
     }
 }

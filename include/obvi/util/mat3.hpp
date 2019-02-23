@@ -30,6 +30,7 @@
 #define OBVI_MAT3_HPP
 
 #include <cmath>
+#include <limits>
 #include <iostream>
 
 #include <obvi/util/vec3.hpp>
@@ -232,11 +233,52 @@ struct mat3
         return m.det();
     }
 
+    mat3& trans_inplace() {
+        mat3& m = *this;
+        std::swap(m(1,0), m(0,1));
+        std::swap(m(2,0), m(0,2));
+        std::swap(m(2,1), m(1,2));
+        return m;
+    }
+    friend mat3& trans_inplace(mat3 &m) {
+        return m.trans_inplace();
+    }
+
     mat3 trans() const {
-        return mat3(col(0), col(1), col(2));
+        mat3 ret = *this;
+        ret.trans_inplace();
+        return ret;
     }
     friend mat3 trans(const mat3& m) {
         return m.trans();
+    }
+
+    bool is_orthogonal() const {
+        return (*this * trans()).is_identity();
+    }
+    friend bool is_orthogonal(const mat3& m) {
+        return m.is_orthogonal();
+    }
+
+
+private:
+    static bool approx_0(const real& val) {
+        return std::abs(val) <= std::numeric_limits<real>::epsilon();
+    }
+
+    static bool approx_1(const real& val) {
+        return std::abs(val - 1) <= std::numeric_limits<real>::epsilon();
+    }
+
+    bool is_diag() const {
+        const mat3& m = *this;
+        return approx_0(m(1,0)) && approx_0(m(2,0)) && approx_0(m(2,1))
+            && approx_0(m(0,1)) && approx_0(m(0,2)) && approx_0(m(1,2));
+    }
+
+    bool is_identity() const {
+        const mat3& m = *this;
+        return m.is_diag() && approx_1(m(0,0)) && approx_1(m(1,1)) && approx_1(m(2,2));
     }
 };
 
