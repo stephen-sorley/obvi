@@ -2,7 +2,7 @@
  *
  * This class only supports affine transformations that represent some combination of
  * rotations, translations, and uniform scaling (i.e., scaling that's the same on every
- * axis). Shear and non-unform scaling are not supported for two reasons:
+ * axis). Shear and non-uniform scaling are not supported for two reasons:
  *   (1) These operations aren't useful when displaying 3D models - they distort the image.
  *   (2) Omitting these operations makes the transform trivially invertible (no determinant
  *       or division operations are needed), so inverses can be performed quickly and without
@@ -54,8 +54,8 @@ struct affine3
 
     affine3() {}
 
-    // Intentionally didn't mark implicit - allows you to pre or post multiply a rotation
-    // matrix directly as a shorthand, instead of wrapping with affine3().
+    // Intentionally didn't make this explicit - allows you to pre or post multiply a rotation
+    // matrix directly, instead of wrapping with affine3(). Just a convenient shorthand.
     affine3(const mat3<real>& rotation) : rot(rotation) {}
 
     explicit affine3(const vec3<real>& translation) : tr(translation) {}
@@ -66,6 +66,7 @@ struct affine3
         uscale *= rhs.scale;
     }
 
+    // Combine two affine transformations into a single affine transform.
     friend const affine3& operator*(const affine3& lhs, const affine3& rhs) {
         affine3 ret = lhs;
 
@@ -76,6 +77,7 @@ struct affine3
         return ret;
     }
 
+    // Transform the given vector.
     friend vec3<real> operator*(const affine3& aff, const vec3<real>& vec) {
         return aff.rot * (vec * aff.uscale) + aff.tr;
     }
