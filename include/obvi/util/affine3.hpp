@@ -4,9 +4,8 @@
  * rotations, translations, and uniform scaling (i.e., scaling that's the same on every
  * axis). Shear and non-uniform scaling are not supported for two reasons:
  *   (1) These operations aren't useful when displaying 3D models - they distort the image.
- *   (2) Omitting these operations makes the transform trivially invertible (no determinant
- *       or division operations are needed), so inverses can be performed quickly and without
- *       greatly increasing the floating-point error (no determinant or float division).
+ *   (2) Omitting these operations makes the transform trivially invertible, so inverses
+ *       can be performed quickly and without greatly increasing the floating-point error.
  *
  * * * * * * * * * * * *
  * The MIT License (MIT)
@@ -36,6 +35,7 @@
 #define OBVI_AFFINE3_HPP
 
 #include <cmath>
+#include <array>
 #include <iostream>
 
 #include <obvi/util/vec3.hpp>
@@ -62,19 +62,57 @@ struct affine3
 
     explicit affine3(const real& scale) : uscale(scale) {}
 
+    // Accessors.
+    const mat3<real>& rotation() const {
+        return rot;
+    }
+    const vec3<real>& translation() const {
+        return tr;
+    }
+    const real& scale() const {
+        return uscale;
+    }
+
+    // Export to an OpenGL-compatible matrix (4x4 matrix representation of affine transform,
+    // stored in column-major order).
+    template<typename GLreal>
+    void to_gl(std::array<GLreal, 16> &arr) {
+        // Initialize with all zeros.
+        arr.fill(GLreal(0));
+
+        // Store rotation matrix in upper-left 3x3 of 4x4.
+        // Multiply diagonal of rotation matrix by uscale as we store it.
+        for(int col=0; col<3; ++col) {
+            for(int row=0; row<3; ++row) {
+                real val = rot(row, col);
+                if (row == col) {
+                    val *= uscale;
+                }
+                arr[colmajor(row, col)] = GLreal(val);
+            }
+        }
+
+        // Store translation vector in upper-right 3x1 of 4x4.
+        arr[colmajor(0, 3)] = GLreal(tr.x());
+        arr[colmajor(1, 3)] = GLreal(tr.y());
+        arr[colmajor(2, 3)] = GLreal(tr.z());
+
+        // Store a 1 in lower-right corner.
+        arr[colmajor(3, 3)] = GLreal(1);
+    }
+
+    // Combine two affine transformations into a single affine transform.
     affine3& operator*=(const affine3& rhs) {
-        uscale *= rhs.scale;
+        tr     += rot * (rhs.tr * uscale);
+        rot    *= rhs.rot;
+        uscale *= rhs.uscale;
+
+        return *this;
     }
 
     // Combine two affine transformations into a single affine transform.
     friend const affine3& operator*(const affine3& lhs, const affine3& rhs) {
-        affine3 ret = lhs;
-
-        lhs.tr     += lhs.rot * rhs.tr;
-        lhs.rot    *= rhs.rot;
-        lhs.uscale *= rhs.uscale;
-
-        return ret;
+        return affine3(lhs) *= rhs;
     }
 
     // Transform the given vector.
@@ -93,8 +131,7 @@ struct affine3
     }
 
     affine3 inv() const {
-        affine3 ret = *this;
-        return ret.inv_inplace();
+        return affine3(*this).inv_inplace();
     }
     friend affine3 inv(const affine3& aff) {
         return aff.inv();
@@ -108,6 +145,10 @@ private:
     vec3<real> tr;
     // uniform scaling part of transformation
     real       uscale = 1;
+
+    int colmajor(int row, int col) {
+        return col * 4 + row;
+    }
 };
 
 using affine3f = affine3<float>;
