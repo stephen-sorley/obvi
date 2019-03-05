@@ -89,6 +89,12 @@ TEMPLATE_TEST_CASE("mat3 set and get", "[mat3]", float, double) {
         m = mat3<TestType>::identity();
         MAT3_EQUAL(m, 1,0,0, 0,1,0, 0,0,1);
 
+        m = mat3<TestType>::diagonal(TestType(3.5));
+        MAT3_EQUAL(m, 3.5_a,0,0, 0,3.5_a,0, 0,0,3.5_a);
+
+        m = mat3<TestType>::diagonal(1, 2, 3);
+        MAT3_EQUAL(m, 1,0,0, 0,2,0, 0,0,3);
+
         m = mat3<TestType>::xrot(TestType(0.4));
         MAT3_EQUAL(m, 1.0_a, 0.0_a,        0.0_a,
                      0.0_a, 0.9210610_a, -0.3894183_a,

@@ -81,10 +81,20 @@ struct mat3
     }
 
     // Static methods to create and initialize some common matrices.
+    static mat3 diagonal(real fill) {
+        return mat3(fill,    0,    0,
+                       0, fill,    0,
+                       0,    0, fill);
+    }
+
+    static mat3 diagonal(real d1, real d2, real d3) {
+        return mat3(d1,  0,  0,
+                     0, d2,  0,
+                     0,  0, d3);
+    }
+
     static mat3 identity() {
-        return mat3(1,0,0,
-                    0,1,0,
-                    0,0,1);
+        return diagonal(1);
     }
 
     static mat3 xrot(real angle_radians) {
