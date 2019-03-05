@@ -54,13 +54,26 @@ struct affine3
 
     affine3() {}
 
-    // Intentionally didn't make this explicit - allows you to pre or post multiply a rotation
-    // matrix directly, instead of wrapping with affine3(). Just a convenient shorthand.
+    // Intentionally didn't make these explicit - allows you to pre or post multiply an affine
+    // rotation, translation, or scaling matrix directly, instead of wrapping with affine3().
+    // Just a convenient shorthand.
     affine3(const mat3<real>& rotation) : rot(rotation) {}
 
-    explicit affine3(const vec3<real>& translation) : tr(translation) {}
+    affine3(const vec3<real>& translation) : tr(translation) {}
 
-    explicit affine3(const real& scale) : uscale(scale) {}
+    affine3(const real& scale) : uscale(scale) {}
+
+    affine3(const mat3<real>& rotation, const vec3<real>& translation)
+        : rot(rotation), tr(translation) {}
+
+    affine3(const mat3<real>& rotation, const vec3<real>& translation, const real& scale)
+        : rot(rotation), tr(translation), uscale(scale) {}
+
+    void set(const mat3<real>& rotation, const vec3<real>& translation, const real& scale = 1) {
+        rot    = rotation;
+        tr     = translation;
+        uscale = scale;
+    }
 
     // Accessors.
     const mat3<real>& rotation() const {
