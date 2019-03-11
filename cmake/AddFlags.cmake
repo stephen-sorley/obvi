@@ -118,8 +118,9 @@ else()
         )
     endif()
 
-    # Versions of CMake before 3.14 have a bug where it doesn't add "-pie" to executable link lines when
-    # you enable position independent code (only adds "-fPIE", which isn't enough for the GNU linker).
+    # Versions of CMake before 3.14 have a bug where it doesn't add "-pie" to executable link lines
+    # when you enable position independent code (only adds "-fPIE", which isn't enough for the GNU
+    # linker).
     #
     # See: https://gitlab.kitware.com/cmake/cmake/issues/14983
     # TODO: remove this once minimum supported CMake version is >= 3.14.

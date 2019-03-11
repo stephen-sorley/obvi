@@ -68,10 +68,10 @@ struct mat3
         rows[2] = row2;
     }
 
-    real& operator()(int rowIdx, int colIdx) { return rows[rowIdx].pt[colIdx]; }
-    const real& operator()(int rowIdx, int colIdx) const { return rows[rowIdx].pt[colIdx]; }
+    real& operator()(size_t rowIdx, size_t colIdx) { return rows[rowIdx].pt[colIdx]; }
+    const real& operator()(size_t rowIdx, size_t colIdx) const { return rows[rowIdx].pt[colIdx]; }
 
-    vec3<real> col(int colIdx) const {
+    vec3<real> col(size_t colIdx) const {
         return vec3<real>(rows[0].pt[colIdx], rows[1].pt[colIdx], rows[2].pt[colIdx]);
     }
 
@@ -178,7 +178,7 @@ struct mat3
 
     // Multiplication.
     mat3& operator*=(const mat3& rhs) {
-        for(int i=0; i<3; ++i) {
+        for(size_t i=0; i<3; ++i) {
             rows[i].set(
                 rows[i].dot(rhs(0,0), rhs(1,0), rhs(2,0)),
                 rows[i].dot(rhs(0,1), rhs(1,1), rhs(2,1)),

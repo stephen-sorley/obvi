@@ -95,8 +95,8 @@ struct affine3
 
         // Store rotation matrix in upper-left 3x3 of 4x4.
         // Multiply diagonal of rotation matrix by uscale as we store it.
-        for(int col=0; col<3; ++col) {
-            for(int row=0; row<3; ++row) {
+        for(size_t col=0; col<3; ++col) {
+            for(size_t row=0; row<3; ++row) {
                 real val = rot(row, col);
                 if (row == col) {
                     val *= uscale;
@@ -159,7 +159,7 @@ private:
     // uniform scaling part of transformation
     real       uscale = 1;
 
-    int colmajor(int row, int col) {
+    size_t colmajor(size_t row, size_t col) {
         return col * 4 + row;
     }
 };
