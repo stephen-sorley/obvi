@@ -36,6 +36,9 @@ include_guard(DIRECTORY)
 
 include("${CMAKE_CURRENT_LIST_DIR}/AddFlagsHelpers.cmake")
 
+# Don't relink executables when shared libraries they depend on change - it's not necessary.
+set(CMAKE_LINK_DEPENDS_NO_SHARED TRUE)
+
 # Always compile everything as PIE/PIC (for security, and so that static libs can be used as inputs
 # when building shared libs).
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
