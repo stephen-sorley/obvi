@@ -168,4 +168,4 @@ using affine3f = affine3<float>;
 using affine3d = affine3<double>;
 
 } // END namespace obvi
-#endif //OBVI_AFFINE3_HPP
+#endif // OBVI_AFFINE3_HPP
