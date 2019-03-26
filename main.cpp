@@ -29,8 +29,11 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <obvi/util/math.hpp>
 #include <obvi/util/vec3.hpp>
 #include <obvi/util/mat3.hpp>
+#include <obvi/util/affine3.hpp>
+#include <obvi/util/camera3.hpp>
 
 int main(int argc, char *argv[])
 {
