@@ -98,7 +98,7 @@ struct affine3
         for(size_t col=0; col<3; ++col) {
             for(size_t row=0; row<3; ++row) {
                 real val = rot(row, col);
-                if (row == col) {
+                if(row == col) {
                     val *= uscale;
                 }
                 arr[colmajor(row, col)] = GLreal(val);
