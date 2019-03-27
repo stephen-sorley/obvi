@@ -220,7 +220,7 @@ private:
         invp[5] = (mbottom + mtop) / n2;
     }
 
-    size_t colmajor(size_t row, size_t col) {
+    static size_t colmajor(size_t row, size_t col) {
         return col * 4 + row;
     }
 

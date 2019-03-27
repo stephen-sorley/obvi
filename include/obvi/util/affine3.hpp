@@ -89,7 +89,7 @@ struct affine3
     // Export to an OpenGL-compatible matrix (4x4 matrix representation of affine transform,
     // stored in column-major order).
     template<typename GLreal>
-    void to_gl(std::array<GLreal, 16> &arr) {
+    void to_gl(std::array<GLreal, 16> &arr) const {
         // Initialize with all zeros.
         arr.fill(GLreal(0));
 
@@ -159,7 +159,7 @@ private:
     // uniform scaling part of transformation
     real       uscale = 1;
 
-    size_t colmajor(size_t row, size_t col) {
+    static size_t colmajor(size_t row, size_t col) {
         return col * 4 + row;
     }
 };
