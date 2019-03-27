@@ -21,6 +21,9 @@
  * corner of the window, and (width,height) is the lower-right. You'll need to factor that in when
  * converting NDC coords to window coords, or vice-versa.
  *
+ * Inverse (convert point in clip coords to a ray in object coords):
+ * [point in object coords] = Model^-1 * View^-1 * Projection^-1 * [point in clip coords]
+ *
  * * * * * * * * * * * *
  * The MIT License (MIT)
  *
@@ -115,6 +118,18 @@ struct camera3
         return set_frustum(-fW, fW, -fH, fH, near, far);
     }
 
+    /* Construct (projection * view) matrix, save in opengl format. */
+    template<typename GLreal>
+    void to_gl(std::array<GLreal, 16>& arr) {
+        to_gl_internal(arr, view);
+    }
+
+    /* Construct (projection * view * model) matrix, save in opengl format. */
+    template<typename GLreal>
+    void to_gl(std::array<GLreal, 16>& arr, const affine3<real>& model) {
+        to_gl_internal(arr, view * model);
+    }
+
 private:
     type proj_type = type::ORTHOGRAPHIC;
 
@@ -203,6 +218,95 @@ private:
         invp[3] = (mnear + mfar) / nf2;
         invp[4] = (mright + mleft) / n2;
         invp[5] = (mbottom + mtop) / n2;
+    }
+
+    size_t colmajor(size_t row, size_t col) {
+        return col * 4 + row;
+    }
+
+    template<typename GLreal>
+    void to_gl_internal(std::array<GLreal, 16>& arr, affine3<real>& aff) {
+        switch(proj_type) {
+            case type::ORTHOGRAPHIC:
+                to_gl_internal_orthographic(arr, aff);
+            break;
+
+            case type::PERSPECTIVE:
+                to_gl_internal_perpective(arr, aff);
+            break;
+        }
+    }
+
+    // Compute (ortho projection * aff), store column-wise in arr for export to OpenGL.
+    template<typename GLreal>
+    void to_gl_internal_orthographic(std::array<GLreal, 16>& arr, affine3<real>& aff) {
+        const affine3<real>& rot = aff.rotation();
+        const vec3<real>& tr     = aff.translation();
+
+        // Initialize with all zeros.
+        arr.fill(GLreal(0));
+
+        // Combine scale with rotation matrix, then compute upper-left 3x3 of result.
+        real s00 = rot(0,0) * aff.scale();
+        real s11 = rot(1,1) * aff.scale();
+        real s22 = rot(2,2) * aff.scale();
+
+        arr[colmajor(0,0)] = GLreal( p[0]*s00 );
+        arr[colmajor(0,1)] = GLreal( p[0]*rot(0,1) );
+        arr[colmajor(0,2)] = GLreal( p[0]*rot(0,2) );
+
+        arr[colmajor(1,0)] = GLreal( p[1]*rot(1,0) );
+        arr[colmajor(1,1)] = GLreal( p[1]*s11 );
+        arr[colmajor(1,2)] = GLreal( p[1]*rot(1,2) );
+
+        arr[colmajor(2,0)] = GLreal( p[2]*rot(2,0) );
+        arr[colmajor(2,1)] = GLreal( p[2]*rot(2,1) );
+        arr[colmajor(2,2)] = GLreal( p[2]*s22 );
+
+        // Compute upper-right 3x1 of result.
+        arr[colmajor(0,3)] = GLreal( p[0]*tr.x() + p[4] );
+        arr[colmajor(1,3)] = GLreal( p[1]*tr.y() + p[5] );
+        arr[colmajor(2,3)] = GLreal( p[2]*tr.z() + p[3] );
+
+        arr[colmajor(3,3)] = GLreal( 1 );
+    }
+
+    // Compute (perspective projection * aff), store column-wise in arr for export to OpenGL.
+    template<typename GLreal>
+    void to_gl_internal_perpective(std::array<GLreal, 16>& arr, affine3<real>& aff) {
+        const affine3<real>& rot = aff.rotation();
+        const vec3<real>& tr     = aff.translation();
+
+        // Initialize with all zeros.
+        arr.fill(GLreal(0));
+
+        // Combine scale with rotation matrix, then compute upper-left 3x3 of result.
+        real s00 = rot(0,0) * aff.scale();
+        real s11 = rot(1,1) * aff.scale();
+        real s22 = rot(2,2) * aff.scale();
+
+        arr[colmajor(0,0)] = GLreal( p[0]*s00      + p[4]*rot(2,0) );
+        arr[colmajor(0,1)] = GLreal( p[0]*rot(0,1) + p[4]*rot(2,1) );
+        arr[colmajor(0,2)] = GLreal( p[0]*rot(0,2) + p[4]*s22 );
+
+        arr[colmajor(1,0)] = GLreal( p[1]*rot(1,0) + p[5]*rot(2,0) );
+        arr[colmajor(1,1)] = GLreal( p[1]*s11      + p[5]*rot(2,1) );
+        arr[colmajor(1,2)] = GLreal( p[1]*rot(1,2) + p[5]*s22 );
+
+        arr[colmajor(2,0)] = GLreal( p[2]*rot(2,0) );
+        arr[colmajor(2,1)] = GLreal( p[2]*rot(2,1) );
+        arr[colmajor(2,2)] = GLreal( p[2]*s22 );
+
+        // Compute upper-right 3x1 of result.
+        arr[colmajor(0,3)] = GLreal( p[0]*tr.x() + p[4]*tr.z() );
+        arr[colmajor(1,3)] = GLreal( p[1]*tr.y() + p[5]*tr.z() );
+        arr[colmajor(2,3)] = GLreal( p[2]*tr.z() + p[3] );
+
+        // Compute bottom row (1x4) of result.
+        arr[colmajor(3,0)] = GLreal( -rot(2,0) );
+        arr[colmajor(3,1)] = GLreal( -rot(2,1) );
+        arr[colmajor(3,2)] = GLreal( -s22 );
+        arr[colmajor(3,3)] = GLreal( -tr.z() );
     }
 };
 
