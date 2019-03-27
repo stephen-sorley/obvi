@@ -120,13 +120,13 @@ struct camera3
 
     /* Construct (projection * view) matrix, save in opengl format. */
     template<typename GLreal>
-    void to_gl(std::array<GLreal, 16>& arr) {
+    void to_gl(std::array<GLreal, 16>& arr) const {
         to_gl_internal(arr, view);
     }
 
     /* Construct (projection * view * model) matrix, save in opengl format. */
     template<typename GLreal>
-    void to_gl(std::array<GLreal, 16>& arr, const affine3<real>& model) {
+    void to_gl(std::array<GLreal, 16>& arr, const affine3<real>& model) const {
         to_gl_internal(arr, view * model);
     }
 
@@ -225,7 +225,7 @@ private:
     }
 
     template<typename GLreal>
-    void to_gl_internal(std::array<GLreal, 16>& arr, affine3<real>& aff) {
+    void to_gl_internal(std::array<GLreal, 16>& arr, const affine3<real>& aff) const {
         switch(proj_type) {
             case type::ORTHOGRAPHIC:
                 to_gl_internal_orthographic(arr, aff);
@@ -239,7 +239,7 @@ private:
 
     // Compute (ortho projection * aff), store column-wise in arr for export to OpenGL.
     template<typename GLreal>
-    void to_gl_internal_orthographic(std::array<GLreal, 16>& arr, affine3<real>& aff) {
+    void to_gl_internal_orthographic(std::array<GLreal, 16>& arr, const affine3<real>& aff) const {
         const affine3<real>& rot = aff.rotation();
         const vec3<real>& tr     = aff.translation();
 
@@ -273,7 +273,7 @@ private:
 
     // Compute (perspective projection * aff), store column-wise in arr for export to OpenGL.
     template<typename GLreal>
-    void to_gl_internal_perpective(std::array<GLreal, 16>& arr, affine3<real>& aff) {
+    void to_gl_internal_perpective(std::array<GLreal, 16>& arr, const affine3<real>& aff) const {
         const affine3<real>& rot = aff.rotation();
         const vec3<real>& tr     = aff.translation();
 
