@@ -66,25 +66,46 @@ struct camera3
         PERSPECTIVE   // Perspective projection (real-world view)
     };
 
-    // Inverse of camera position and orientation (view matrix).
-    affine3<real> view;
-
+    // Easiest way to set the camera's orientation and position (view transformation).
+    //
+    // camera_pos = location of camera in world coordinates
+    // target_pos = point camera should be aimed at, in world coordinates
+    // up         = direction in world coordinates that will represent "up" in the camera's image
     void look_at(const vec3<real>& camera_pos, const vec3<real>& target_pos, const vec3<real>& up) {
         // Rotate axes so that -z points from camera to target. Set +x to be perpendicular to up
         // vector and +z, in direction to obey right-hand rule. Set +y to be perpendicular to +x
         // and +z. Store result in 'view' as affine transform.
         mat3<real> rot;
-        vec3<real> eye = target_pos - camera_pos;
-        rot.rows[0] = (eye.cross(up)).normalized();           // new +x, expressed in old coords
-        rot.rows[1] = (rot.rows[0].cross(eye)).normalized();  // new +y, expressed in old coords
-        rot.rows[2] = -eye.normalized();                      // new +z, expressed in old coords
+        vec3<real> look_dir = target_pos - camera_pos;
+        rot.rows[0] = (look_dir.cross(up)).normalized();          // new +x, expressed in old coords
+        rot.rows[1] = (rot.rows[0].cross(look_dir)).normalized(); // new +y, expressed in old coords
+        rot.rows[2] = -look_dir.normalized();                     // new +z, expressed in old coords
         view = rot;
 
-        // Apply translation to move camera back away from object (ends up being applied first).
-        view *= affine3<real>(-eye);
+        // Translate coordinate system so that camera is at (0,0,0).
+        view *= affine3<real>(-camera_pos);
+
+        // Store the inverse of the transformation, too.
+        invview = view.inv();
     }
 
-    // Camera projection.
+    // Set the view transformation directly.
+    // Use look_at() instead of this function, if possible (it's easier to do correctly).
+    void set_view(const affine3<real>& new_view) {
+        view    = new_view;
+        invview = new_view.inv();
+    }
+
+    // Return this camera's current view transform (inverse of camera position and orientation).
+    const affine3<real>& get_view() const {
+        return view;
+    }
+
+    // Return inverse of this camera's current view transform (camera position and orientation).
+    const affine3<real>& get_inverse_view() const {
+        return invview;
+    }
+
     bool set_projection(type proj, real left, real right, real bottom, real top, real near, real far) {
         if(near <= real(0) || far <= real(0) || left == right || bottom == top) {
             return false;
@@ -118,19 +139,45 @@ struct camera3
         return set_frustum(-fW, fW, -fH, fH, near, far);
     }
 
-    /* Construct (projection * view) matrix, save in opengl format. */
+    // Construct (projection * view) matrix, save in opengl format.
     template<typename GLreal>
     void to_gl(std::array<GLreal, 16>& arr) const {
         to_gl_internal(arr, view);
     }
 
-    /* Construct (projection * view * model) matrix, save in opengl format. */
+    // Construct (projection * view * model) matrix, save in opengl format.
     template<typename GLreal>
     void to_gl(std::array<GLreal, 16>& arr, const affine3<real>& model) const {
         to_gl_internal(arr, view * model);
     }
 
+    // Reverse the camera transform - convert vector in clip coords back to world coords.
+    vec3<real> unproject(const vec3<real>& vec) const {
+        vec3<real> res = vec;
+
+        // Reverse the projection transformation, to go from clip coords back to eye coords.
+        switch(proj_type) {
+            case type::ORTHOGRAPHIC:
+                res = unproject_orthographic(vec);
+            break;
+
+            case type::PERSPECTIVE:
+                res = unproject_perspective(vec);
+            break;
+        }
+
+        // Reverse the view transformation, to go from eye coords back to world coords.
+        // Note: caller will still need to multiply by inverse of each object's transform matrix
+        //       before using the returned vector to interrogate the object.
+        return invview * res;
+    }
+
 private:
+    // Inverse of camera position and orientation (view matrix).
+    affine3<real> view;
+    affine3<real> invview; // calculate this once and save, to avoid recalc on calls to unproject().
+
+    // Parameters for projection matrix (think of it as the lens of the camera).
     type proj_type = type::ORTHOGRAPHIC;
 
     real mleft   = -1;
@@ -140,9 +187,13 @@ private:
     real mnear   = 1;
     real mfar    = 1000;
 
+    // Projection and inverse projection matrices (only store the elements that aren't constant).
+    // Store these so they're only calculated when the params (left, right, etc.) change, instead
+    // of on every call of to_gl() or unproject().
     real p[6]    = {0};
     real invp[6] = {0};
 
+    // Private helper functions.
     void recalc() {
         switch(proj_type) {
             case type::ORTHOGRAPHIC:
@@ -220,6 +271,37 @@ private:
         invp[5] = (mbottom + mtop) / n2;
     }
 
+    // Reverse the orthographic projection - go from NDC back to eye coords.
+    vec3<real> unproject_orthographic(const vec3<real>& vec) const {
+        vec3<real> res;
+
+        // Note: for orthographic, value of 'w' is implicilty always 1.
+        res.x() = invp[0]*vec.x() + invp[4];
+        res.y() = invp[1]*vec.y() + invp[5];
+        res.z() = invp[2]*vec.z() + invp[3];
+
+        return res;
+    }
+
+    // Reverse the perspective projection - go from NDC back to eye coords.
+    vec3<real> unproject_perspective(const vec3<real>& vec) const {
+        vec3<real> res;
+
+        res.x() = invp[0]*vec.x() + invp[4];
+        res.y() = invp[1]*vec.y() + invp[5];
+        res.z() = -vec.z();
+
+        /*
+          Since 'res' is a 3D vector (w is assumed to be 1), but the result of an inverse
+          perspective projection will have a value other than '1' for the w component, we need to
+          calculate the w component and then divide all the vector components by it so that
+          (x,y,z) have the proper values for w=1.
+        */
+        res /= invp[2]*vec.z() + invp[3];
+
+        return res;
+    }
+
     static size_t colmajor(size_t row, size_t col) {
         return col * 4 + row;
     }
@@ -232,7 +314,7 @@ private:
             break;
 
             case type::PERSPECTIVE:
-                to_gl_internal_perpective(arr, aff);
+                to_gl_internal_perspective(arr, aff);
             break;
         }
     }
@@ -273,7 +355,7 @@ private:
 
     // Compute (perspective projection * aff), store column-wise in arr for export to OpenGL.
     template<typename GLreal>
-    void to_gl_internal_perpective(std::array<GLreal, 16>& arr, const affine3<real>& aff) const {
+    void to_gl_internal_perspective(std::array<GLreal, 16>& arr, const affine3<real>& aff) const {
         const affine3<real>& rot = aff.rotation();
         const vec3<real>& tr     = aff.translation();
 
