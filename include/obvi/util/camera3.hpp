@@ -106,6 +106,16 @@ struct camera3
         return invview;
     }
 
+    // Set the camera's projection matrix (basially, this describes the camera's lens).
+    // For typical scenes, just use set_perspective(). This function is only useful if you
+    // need an orthographic projection, or an off-axis perspective projection.
+    //
+    //   left: location of left clipping plane
+    //   right: location of right clipping plane (left + right = 0 if on-axis)
+    //   bottom: location of bottom clipping plane
+    //   top: location of top clipping plane (bottom + top = 0 if on-axis)
+    //   near: distance to near clipping plane (must always be POSITIVE)
+    //   far: distance to far clipping plane (must always be POSITIVE)
     bool set_projection(type proj, real left, real right, real bottom, real top, real near, real far) {
         if(near <= real(0) || far <= real(0) || left == right || bottom == top) {
             return false;
@@ -113,14 +123,14 @@ struct camera3
 
         proj_type = proj;
 
-        mleft = left;
-        mright = right;
-        mbottom = bottom;
-        mtop = top;
-        mnear = near;
-        mfar = far;
-
-        recalc();
+        switch(proj_type) {
+            case type::ORTHOGRAPHIC:
+                recalc_orthographic(left, right, bottom, top, near, far);
+            break;
+            case type::PERSPECTIVE:
+                recalc_perspective(left, right, bottom, top, near, far);
+            break;
+        }
         return true;
     }
 
@@ -136,7 +146,7 @@ struct camera3
 
         real fH = std::tan(fovy_rad * real(0.5)) * near;
         real fW = fH * aspect_ratio;
-        return set_frustum(-fW, fW, -fH, fH, near, far);
+        return set_projection(type::PERSPECTIVE, -fW, fW, -fH, fH, near, far);
     }
 
     // Construct (projection * view) matrix, save in opengl format.
@@ -177,38 +187,18 @@ private:
     affine3<real> view;
     affine3<real> invview; // calculate this once and save, to avoid recalc on calls to unproject().
 
-    // Parameters for projection matrix (think of it as the lens of the camera).
+    // Camera projection matrix (think of it as the lens of the camera).
+    // Initialize to orthographic type camera, with identity matrices for the projection matrix
+    // and its inverse.
     type proj_type = type::ORTHOGRAPHIC;
-
-    real mleft   = -1;
-    real mright  = 1;
-    real mbottom = -1;
-    real mtop    = 1;
-    real mnear   = 1;
-    real mfar    = 1000;
-
-    // Projection and inverse projection matrices (only store the elements that aren't constant).
-    // Store these so they're only calculated when the params (left, right, etc.) change, instead
-    // of on every call of to_gl() or unproject().
-    real p[6]    = {0};
-    real invp[6] = {0};
+    real p[6]      = {1, 1, 1, 0, 0, 0}; // projection matrix (sparse, only store non-const values)
+    real invp[6]   = {1, 1, 1, 0, 0, 0}; // inverse of projection matrix
 
     // Private helper functions.
-    void recalc() {
-        switch(proj_type) {
-            case type::ORTHOGRAPHIC:
-                recalc_ortho();
-            break;
-            case type::PERSPECTIVE:
-                recalc_persp();
-            break;
-        }
-    }
-
-    void recalc_ortho() {
-        real w  = mright - mleft;
-        real h  = mtop - mbottom;
-        real nd = mnear - mfar;
+    void recalc_orthographic(real left, real right, real bottom, real top, real near, real far) {
+        real w  = right - left;
+        real h  = top - bottom;
+        real nd = near - far;
 
         /* Orthographic:
          |p[0]  0    0   p[4]|
@@ -219,9 +209,9 @@ private:
         p[0] = real(2) / w;
         p[1] = real(2) / h;
         p[2] = real(2) / nd;
-        p[3] = (mnear + mfar) / nd;
-        p[4] = (mleft + mright) / -w;
-        p[5] = (mbottom + mtop) / -h;
+        p[3] = (near + far) / nd;
+        p[4] = (left + right) / -w;
+        p[5] = (bottom + top) / -h;
 
         /* Orthographic (Inverse):
          |invp[0]    0       0    invp[4]|
@@ -232,17 +222,17 @@ private:
         invp[0] = w / real(2);
         invp[1] = h / real(2);
         invp[2] = nd / real(2);
-        invp[3] = (mnear + mfar) / real(-2);
-        invp[4] = (mleft + mright) / real(2);
-        invp[5] = (mbottom + mtop) / real(2);
+        invp[3] = (near + far) / real(-2);
+        invp[4] = (left + right) / real(2);
+        invp[5] = (bottom + top) / real(2);
     }
 
-    void recalc_persp() {
-        real w   = mright - mleft;
-        real h   = mtop - mbottom;
-        real nd  = mnear - mfar;
-        real n2  = real(2) * mnear;
-        real nf2 = n2 * mfar;
+    void recalc_perspective(real left, real right, real bottom, real top, real near, real far) {
+        real w   = right - left;
+        real h   = top - bottom;
+        real nd  = near - far;
+        real n2  = real(2) * near;
+        real nf2 = n2 * far;
 
         /* Perspective:
          |p[0]  0   p[4]  0  |
@@ -252,10 +242,10 @@ private:
         */
         p[0] = n2 / w;
         p[1] = n2 / h;
-        p[2] = (mnear + mfar) / nd;
+        p[2] = (near + far) / nd;
         p[3] = nf2 / nd;
-        p[4] = (mright + mleft) / w;
-        p[5] = (mbottom + mtop) / h;
+        p[4] = (right + left) / w;
+        p[5] = (bottom + top) / h;
 
         /* Perspective (Inverse):
          |invp[0]    0       0    invp[4]|
@@ -266,9 +256,9 @@ private:
         invp[0] = w / n2;
         invp[1] = h / n2;
         invp[2] = nd / nf2;
-        invp[3] = (mnear + mfar) / nf2;
-        invp[4] = (mright + mleft) / n2;
-        invp[5] = (mbottom + mtop) / n2;
+        invp[3] = (near + far) / nf2;
+        invp[4] = (right + left) / n2;
+        invp[5] = (bottom + top) / n2;
     }
 
     // Reverse the orthographic projection - go from NDC back to eye coords.
