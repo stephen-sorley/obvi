@@ -121,8 +121,10 @@ TEMPLATE_TEST_CASE("affine3 vector transform", "[affine3]", float, double) {
     affine3<TestType> aff;
     vec3<TestType>    vec;
 
-    aff = vec3<TestType>(TestType(0.1), TestType(-0.2), TestType(0.5));
-    aff *= mat3<TestType>::zrot(TestType(M_PI / 2.0));
-    vec = aff * vec3<TestType>(TestType(0.5), TestType(0.5), 0);
-    VEC3_EQUAL(vec, -0.4_a, 0.3_a, 0.5_a);
+    SECTION( "rotate then translate" ) {
+        aff = vec3<TestType>(TestType(0.1), TestType(-0.2), TestType(0.5));
+        aff *= mat3<TestType>::zrot(TestType(M_PI / 2.0));
+        vec = aff * vec3<TestType>(TestType(0.5), TestType(0.5), 0);
+        VEC3_EQUAL(vec, -0.4_a, 0.3_a, 0.5_a);
+    }
 }
