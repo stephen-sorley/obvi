@@ -1,4 +1,4 @@
-/* Main executable for Obvi.
+/* Main implementation of class that implements a bounding-volume hierarchy (BVH).
  *
  * * * * * * * * * * * *
  * The MIT License (MIT)
@@ -25,24 +25,4 @@
  * * * * * * * * * * * *
  */
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-
-#include <obvi/util/math.hpp>
-#include <obvi/util/vec3.hpp>
-#include <obvi/util/mat3.hpp>
-#include <obvi/util/affine3.hpp>
-#include <obvi/util/camera3.hpp>
-#include <obvi/util/bbox.hpp>
-
-int main(int argc, char *argv[])
-{
-    (void)argc; (void)argv;
-
-    char var[5] = {'y','o','!','!','\0'};
-    printf("Hello, world! %s\n", var);
-    strcpy(var, "ok");
-    printf("%s\n", var);
-    return EXIT_SUCCESS;
-}
+#include <obvi/util/bvh.hpp>

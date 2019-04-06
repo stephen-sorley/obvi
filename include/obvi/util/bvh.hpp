@@ -1,4 +1,8 @@
-/* Main executable for Obvi.
+/* Public header for class that implements a bounding-volume hierarchy (BVH).
+ *
+ * A BVH is a datastructure used to accelerate various kinds of queries against a 3D object.
+ * Use cases are things like finding the closest triangle in a mesh that intersects with the
+ * given ray, finding the closest object to a given point, etc.
  *
  * * * * * * * * * * * *
  * The MIT License (MIT)
@@ -24,25 +28,18 @@
  * THE SOFTWARE.
  * * * * * * * * * * * *
  */
+#ifndef OBVI_BVH_HPP
+#define OBVI_BVH_HPP
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
+namespace obvi {
 
-#include <obvi/util/math.hpp>
-#include <obvi/util/vec3.hpp>
-#include <obvi/util/mat3.hpp>
-#include <obvi/util/affine3.hpp>
-#include <obvi/util/camera3.hpp>
-#include <obvi/util/bbox.hpp>
+template<typename real>
+struct bvh {
+    // TODO: implement this
+};
 
-int main(int argc, char *argv[])
-{
-    (void)argc; (void)argv;
+using bvhf = bvh<float>;
+using bvhd = bvh<double>;
 
-    char var[5] = {'y','o','!','!','\0'};
-    printf("Hello, world! %s\n", var);
-    strcpy(var, "ok");
-    printf("%s\n", var);
-    return EXIT_SUCCESS;
-}
+} // END namespace obvi
+#endif // OBVI_BVH_HPP

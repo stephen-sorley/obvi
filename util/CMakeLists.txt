@@ -27,8 +27,10 @@
 # THE SOFTWARE.
 # # # # # # # # # # # #
 
-add_library(util INTERFACE)
+add_library(util STATIC
+    bvh.cpp
+)
 
-target_include_directories(util INTERFACE
+target_include_directories(util PUBLIC
     "${Obvi_SOURCE_DIR}/include"
 )
