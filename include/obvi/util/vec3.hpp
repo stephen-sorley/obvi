@@ -169,6 +169,14 @@ struct vec3
         );
     }
 
+    vec3 abs() const {
+        return vec3(std::abs(x()), std::abs(y()), std::abs(z()));
+    }
+
+    vec3 inv() const {
+        return vec3(real(1)/x(), real(1)/y(), real(1)/z());
+    }
+
     real normsqd() const {
         return this->dot(*this);
     }
