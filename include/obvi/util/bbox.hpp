@@ -31,6 +31,7 @@
 #define OBVI_BBOX_HPP
 
 #include <cmath>
+#include <algorithm> // for min and max
 #include <limits>
 #include <obvi/util/vec3.hpp>
 
@@ -51,6 +52,42 @@ struct bbox {
         return min_pt.x() > max_pt.x();
     }
 
+    void clear() {
+        min_pt.set(1,0,0);
+        max_pt.set(-1,0,0);
+    }
+
+    // Calculate the center of the bounding box.
+    vec3<real> center() {
+        return (min_pt + max_pt) * real(0.5);
+    }
+
+    // Expand the bounding box to include the given point.
+    void expand(const vec3<real>& pt) {
+        if(is_empty()) {
+            min_pt = pt;
+            max_pt = pt;
+        } else {
+            for(size_t i=0; i<3; ++i) {
+                min_pt[i] = std::min(min_pt[i], pt[i]);
+                max_pt[i] = std::max(max_pt[i], pt[i]);
+            }
+        }
+    }
+
+    // Expand the bounding box to include the given bounding box.
+    void expand(const bbox& box) {
+        if(is_empty()) {
+            min_pt = box.min_pt;
+            max_pt = box.max_pt;
+        } else {
+            for(size_t i=0; i<3; ++i) {
+                min_pt[i] = std::min(min_pt[i], box.min_pt[i]);
+                max_pt[i] = std::max(max_pt[i], box.max_pt[i]);
+            }
+        }
+    }
+
     // point <-> bbox intersection
     friend bool intersects(const bbox& box, const vec3<real>& pt) {
         return pt.x() >= box.min_pt.x() && pt.x() <= box.max_pt.x()
@@ -60,6 +97,9 @@ struct bbox {
 
     // bbox <-> bbox intersection
     friend bool intersects(const bbox& box1, const bbox& box2) {
+        if(box1.is_empty() || box2.is_empty()) {
+            return false;
+        }
         return (box1.min_pt.x() <= box2.max_pt.x() && box1.max_pt.x() >= box2.min_pt.x())
             && (box1.min_pt.y() <= box2.max_pt.y() && box1.max_pt.y() >= box2.min_pt.y())
             && (box1.min_pt.z() <= box2.max_pt.z() && box1.max_pt.z() >= box2.min_pt.z());
@@ -70,29 +110,33 @@ struct bbox {
     // Works using the Separating Axis Theorum (SAT), see the following for details:
     // https://www.gamedev.net/forums/topic/338987-aabb---line-segment-intersection-test/?do=findComment&comment=3209917
     friend bool intersects(const bbox& box, const vec3<real>& segA, const vec3<real>& segB) {
+        if(box.is_empty()) {
+            return false;
+        }
+
         vec3<real> d  = (segB - segA) * real(0.5);
         vec3<real> e  = (box.max_pt - box.min_pt) * real(0.5);
         vec3<real> c  = segA + d - (box.max_pt + box.min_pt) * real(0.5);
         vec3<real> ad = d.abs();
 
-        if (std::abs(c.x()) > e.x() + ad.x()) {
+        if(std::abs(c.x()) > e.x() + ad.x()) {
             return false;
         }
-        if (std::abs(c.y()) > e.y() + ad.y()) {
+        if(std::abs(c.y()) > e.y() + ad.y()) {
             return false;
         }
-        if (std::abs(c.z()) > e.z() + ad.z()) {
+        if(std::abs(c.z()) > e.z() + ad.z()) {
             return false;
         }
 
         real eps = std::numeric_limits<real>::epsilon();
-        if (std::abs(d.y()*c.z() - d.z()*c.y()) > e.y()*ad.z() + e.z()*ad.y() + eps) {
+        if(std::abs(d.y()*c.z() - d.z()*c.y()) > e.y()*ad.z() + e.z()*ad.y() + eps) {
             return false;
         }
-        if (std::abs(d.z()*c.x() - d.x()*c.z()) > e.z()*ad.x() + e.x()*ad.z() + eps) {
+        if(std::abs(d.z()*c.x() - d.x()*c.z()) > e.z()*ad.x() + e.x()*ad.z() + eps) {
             return false;
         }
-        if (std::abs(d.x()*c.y() - d.y()*c.x()) > e.x()*ad.y() + e.y()*ad.x() + eps) {
+        if(std::abs(d.x()*c.y() - d.y()*c.x()) > e.x()*ad.y() + e.y()*ad.x() + eps) {
             return false;
         }
 
@@ -102,11 +146,15 @@ struct bbox {
     // ray <-> bbox intersection
     //
     // origin: origin of ray
-    // inv_dir: element-wise inverse (reciprocal) of ray direction
+    // inv_dir: element-wise inverse (reciprocal) of normalized ray direction vector
     //
     // Algorithm taken from the following source (Tavian Barnes, 3/23/2015, public domain):
     //   https://tavianator.com/fast-branchless-raybounding-box-intersections-part-2-nans/
     friend bool intersects(const bbox& box, const vec3<real>& origin, const vec3<real>& inv_dir) {
+        if(box.is_empty()) {
+            return false;
+        }
+
         real t1 = (box.min_pt[0] - origin[0]) * inv_dir[0];
         real t2 = (box.max_pt[0] - origin[0]) * inv_dir[0];
 
