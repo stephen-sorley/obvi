@@ -29,6 +29,7 @@
 add_executable(tests
     tests_main.cpp
 
+    test_math.cpp
     test_vec3.cpp
     test_mat3.cpp
     test_affine3.cpp
