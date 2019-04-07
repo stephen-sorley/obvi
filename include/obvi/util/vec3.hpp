@@ -173,10 +173,6 @@ struct vec3
         return vec3(std::abs(x()), std::abs(y()), std::abs(z()));
     }
 
-    vec3 inv() const {
-        return vec3(real(1)/x(), real(1)/y(), real(1)/z());
-    }
-
     real normsqd() const {
         return this->dot(*this);
     }
@@ -187,6 +183,17 @@ struct vec3
     vec3 normalized() const {
         return *this / std::sqrt(normsqd());
     }
+
+    vec3 inv() const {
+        // invert each element, return result in new vector.
+        return vec3(real(1)/x(), real(1)/y(), real(1)/z());
+    }
+    vec3 norm_inv() const {
+        // normalize the vector, then invert each element, then return result in new vector.
+        real norm = std::sqrt(normsqd());
+        return vec3(norm/x(), norm/y(), norm/z());
+    }
+
 };
 
 using vec3f = vec3<float>;
