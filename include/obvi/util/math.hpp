@@ -30,10 +30,44 @@
 #include <stdint.h> // used this instead of cstdint to make sure type names are in std namespace.
 #include <algorithm> // for std::min, std::max
 
+#ifdef _MSC_VER
+#  include <intrin.h> // provides _BitScanReverse()
+#endif
+
 namespace obvi {
 
     template<typename real>
     constexpr real pi = real(3.141592653589793238462643383279502884197L);
+
+    static inline uint32_t count_leading_zeros(uint32_t x) {
+#if defined(__GNUC__)
+        // GCC or Clang
+        return (x > 0)? (uint32_t)__builtin_clz(x) : 32u;
+#elif defined(_MSC_VER)
+        // Visual Studio
+        unsigned long leading_zero = 0;
+        if(_BitScanReverse(&leading_zero, x)) {
+            return 31u - leading_zero;
+        } else {
+            return 32u;
+        }
+#else
+        static const uint8_t lut[32] = {
+            0, 31, 9, 30, 3, 8, 13, 29, 2, 5, 7, 21, 12, 24, 28, 19,
+            1, 10, 4, 14, 6, 22, 25, 20, 11, 15, 23, 26, 16, 27, 17, 18
+        };
+        if(x == 0) {
+            return 32;
+        }
+        x |= x>>1;
+        x |= x>>2;
+        x |= x>>4;
+        x |= x>>8;
+        x |= x>>16;
+        x++;
+        return lut[x*0x076be629>>27];
+#endif
+    }
 
     /* Expand a 10-bit integer into 30 bits by inserting 2 zeros above each bit.
      *
@@ -43,7 +77,7 @@ namespace obvi {
      *
      * See: https://devblogs.nvidia.com/thinking-parallel-part-iii-tree-construction-gpu/
      */
-    uint32_t expand_bits_30(uint32_t v)
+    static inline uint32_t expand_bits_30(uint32_t v)
     {
         v = v & 0x3FF; // mask off everything above first 10 bits.
         v = (v * 0x00010001u) & 0xFF0000FFu;
@@ -53,7 +87,7 @@ namespace obvi {
         return v;
     }
 
-    constexpr uint32_t morton_30_max = 1 << 10u; // 10 bits per dim
+    const uint32_t morton_30_max = 1 << 10u; // 10 bits per dim
 
     /* Convert a 3D point into a 30-bit morton code.
      *
@@ -64,7 +98,7 @@ namespace obvi {
      * See: https://devblogs.nvidia.com/thinking-parallel-part-iii-tree-construction-gpu/
      */
     template<typename real>
-    uint32_t morton_encode_30(real x, real y, real z) {
+    static inline uint32_t morton_encode_30(real x, real y, real z) {
         // Clamp x,y,z to [0,1023]. (Use 1023 as upper limit because we're going to truncate anyway)
         x = std::min(std::max(x, real(0)), real(morton_30_max - 1));
         y = std::min(std::max(y, real(0)), real(morton_30_max - 1));

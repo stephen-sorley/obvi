@@ -32,8 +32,18 @@
 
 using namespace Catch::literals; // Provides "_a" UDL for approximate floating-point values.
 
+using obvi::count_leading_zeros;
 using obvi::expand_bits_30;
 using obvi::morton_encode_30;
+
+TEST_CASE("count_leading_zeros", "[math]") {
+    REQUIRE( count_leading_zeros(0) == 32 );
+    REQUIRE( count_leading_zeros(1) == 31 );
+    REQUIRE( count_leading_zeros(0xFFFFFFFFu) == 0 );
+    REQUIRE( count_leading_zeros(0x7FFFFFFFu) == 1 );
+    REQUIRE( count_leading_zeros(0x80000000u) == 0 );
+    REQUIRE( count_leading_zeros(0x08000000u) == 4);
+}
 
 TEST_CASE("expand_bits_30", "[math]") {
     REQUIRE( expand_bits_30(   0b1110110001u) == 0b001001001000001001000000000001u );
