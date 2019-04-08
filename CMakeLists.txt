@@ -49,8 +49,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Find third-party dependencies.
 include(AddQtPath)
-
 find_package(Qt5 REQUIRED COMPONENTS Widgets)
+
+find_package(OpenMP QUIET COMPONENTS CXX)
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
