@@ -89,14 +89,14 @@ struct bbox {
     }
 
     // point <-> bbox intersection
-    friend bool intersects(const bbox& box, const vec3<real>& pt) {
+    friend bool intersects_point(const bbox& box, const vec3<real>& pt) {
         return pt.x() >= box.min_pt.x() && pt.x() <= box.max_pt.x()
             && pt.y() >= box.min_pt.y() && pt.y() <= box.max_pt.y()
             && pt.z() >= box.min_pt.z() && pt.z() <= box.max_pt.z();
     }
 
     // bbox <-> bbox intersection
-    friend bool intersects(const bbox& box1, const bbox& box2) {
+    friend bool intersects_box(const bbox& box1, const bbox& box2) {
         if(box1.is_empty() || box2.is_empty()) {
             return false;
         }
@@ -109,7 +109,7 @@ struct bbox {
     //
     // Works using the Separating Axis Theorum (SAT), see the following for details:
     // https://www.gamedev.net/forums/topic/338987-aabb---line-segment-intersection-test/?do=findComment&comment=3209917
-    friend bool intersects(const bbox& box, const vec3<real>& segA, const vec3<real>& segB) {
+    friend bool intersects_segment(const bbox& box, const vec3<real>& segA, const vec3<real>& segB) {
         if(box.is_empty()) {
             return false;
         }
@@ -150,7 +150,7 @@ struct bbox {
     //
     // Algorithm taken from the following source (Tavian Barnes, 3/23/2015, public domain):
     //   https://tavianator.com/fast-branchless-raybounding-box-intersections-part-2-nans/
-    friend bool intersects(const bbox& box, const vec3<real>& origin, const vec3<real>& inv_dir) {
+    friend bool intersects_ray(const bbox& box, const vec3<real>& origin, const vec3<real>& inv_dir) {
         if(box.is_empty()) {
             return false;
         }
