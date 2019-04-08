@@ -49,6 +49,16 @@ TEMPLATE_TEST_CASE("vec3 set and get", "[vec3]", float, double) {
         VEC3_EQUAL(v, v.x(), v.y(), v.z());
     }
 
+    SECTION( "array and index element access are the same" ) {
+        v.pt[0] = TestType(1.1);
+        v.pt[1] = TestType(2.2);
+        v.pt[2] = TestType(3.3);
+        VEC3_EQUAL(v, v[0], v[1], v[2]);
+
+        const vec3<TestType> &vref = v;
+        VEC3_EQUAL(v, vref[0], vref[1], vref[2]);
+    }
+
     SECTION( "set method works" ) {
         v.set(TestType(4.4), TestType(5.5), TestType(6.6));
         VEC3_EQUAL(v, TestType(4.4), TestType(5.5), TestType(6.6));
@@ -131,6 +141,16 @@ TEMPLATE_TEST_CASE("vec3 math", "[vec3]", float, double) {
             v = s * v;
             VEC3_EQUAL(v, 2.5_a, 5.0_a, 7.5_a);
         }
+
+        SECTION( "vector in-place" ) {
+            v *= w;
+            VEC3_EQUAL(v, 4.0_a, 10.0_a, 18.0_a);
+        }
+
+        SECTION( "vector separate" ) {
+            v = v * w;
+            VEC3_EQUAL(v, 4.0_a, 10.0_a, 18.0_a);
+        }
     }
 
     SECTION( "divide" ) {
@@ -139,9 +159,24 @@ TEMPLATE_TEST_CASE("vec3 math", "[vec3]", float, double) {
             VEC3_EQUAL(v, 0.4_a, 0.8_a, 1.2_a);
         }
 
-        SECTION( "scalar separate" ) {
+        SECTION( "scalar separate right" ) {
             v = v / s;
             VEC3_EQUAL(v, 0.4_a, 0.8_a, 1.2_a);
+        }
+
+        SECTION( "scalar separate left" ) {
+            v = s / v;
+            VEC3_EQUAL(v, 2.5_a, 1.25_a, 0.8333333333333333_a);
+        }
+
+        SECTION( "vector in-place" ) {
+            v /= w;
+            VEC3_EQUAL(v, 0.25_a, 0.4_a, 0.5_a);
+        }
+
+        SECTION( "vector separate" ) {
+            v = v / w;
+            VEC3_EQUAL(v, 0.25_a, 0.4_a, 0.5_a);
         }
     }
 

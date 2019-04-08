@@ -59,6 +59,14 @@ struct vec3
     real& z() { return pt[2]; }
     const real& z() const { return pt[2]; }
 
+    real& operator[](size_t i) {
+        return pt[i];
+    }
+    const real& operator[](size_t i) const {
+        return pt[i];
+    }
+
+
     friend std::ostream& operator<<(std::ostream& os, const vec3& v) {
         os << '[' << v.x() << ", " << v.y() << ", " << v.z() << ']';
         return os;
@@ -123,7 +131,7 @@ struct vec3
         return ret;
     }
 
-    // Scalar Multiplication
+    // Multiplication (element-wise)
     vec3& operator*=(const real& rhs) {
         pt[0] *= rhs;
         pt[1] *= rhs;
@@ -139,7 +147,18 @@ struct vec3
         return vec * scalar;
     }
 
-    // Scalar Division
+    vec3& operator*=(const vec3& rhs) {
+        pt[0] *= rhs[0];
+        pt[1] *= rhs[1];
+        pt[2] *= rhs[2];
+        return *this;
+    }
+    vec3 operator*(const vec3& rhs) const {
+        vec3 ret = *this;
+        return ret *= rhs;
+    }
+
+    // Division (element-wise)
     vec3& operator/=(const real& rhs) {
         pt[0] /= rhs;
         pt[1] /= rhs;
@@ -150,6 +169,20 @@ struct vec3
         vec3 ret = *this;
         ret /= rhs;
         return ret;
+    }
+    friend vec3 operator/(const real& scalar, const vec3& vec) {
+        return vec3(scalar / vec.pt[0], scalar / vec.pt[1], scalar / vec.pt[2]);
+    }
+
+    vec3& operator/=(const vec3& rhs) {
+        pt[0] /= rhs.pt[0];
+        pt[1] /= rhs.pt[1];
+        pt[2] /= rhs.pt[2];
+        return *this;
+    }
+    vec3 operator/(const vec3& rhs) const {
+        vec3 ret = *this;
+        return ret /= rhs;
     }
 
     // Other vector operations
