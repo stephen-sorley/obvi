@@ -31,15 +31,50 @@
 #ifndef OBVI_BVH_HPP
 #define OBVI_BVH_HPP
 
+#include <vector>
+
+#include <obvi/util/math.hpp>
+#include <obvi/util/vec3.hpp>
+#include <obvi/util/bbox.hpp>
+
 namespace obvi {
 
-template<typename real>
 struct bvh {
-    // TODO: implement this
-};
 
-using bvhf = bvh<float>;
-using bvhd = bvh<double>;
+    //max number of objects in BVH is 2^30, because number of BVH nodes is (2*num_leaves-1), and
+    //the number of nodes must fit in a 31-bit unsigned integer.
+    static constexpr size_t max_size = 1 << 30;
+
+    void clear() {
+        tree.clear();
+        num_leaves = 0;
+    }
+
+    /* Create a new BVH from the given list of object bounding boxes.
+     *
+     * Any previously-generated tree data will be wiped first.
+     *
+     * Returns 'false' if there are too many boxes (i.e., resulting tree would exhaust
+     * the index space). This won't occur unless you try to make a BVH with more than
+     * ~1 billion (2^30) objects in a single tree.
+     */
+    bool generate(const std::vector<bboxf>& boxes);
+
+    size_t size() const {
+        return num_leaves;
+    }
+
+    // internal bvh node.
+    struct node {
+        bboxf    box;
+        uint32_t num; // high bit == 0: 31 low bits are num nodes in subtree with this node as root.
+                      // high bit == 1: this is a leaf node, and 31 low bits are index of object.
+    }; // 28 bytes
+
+private:
+    std::vector<node> tree; // BVH tree, stored linearly in depth-first-traversal order
+    size_t            num_leaves = 0;
+};
 
 } // END namespace obvi
 #endif // OBVI_BVH_HPP

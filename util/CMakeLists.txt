@@ -34,3 +34,9 @@ add_library(util STATIC
 target_include_directories(util PUBLIC
     "${Obvi_SOURCE_DIR}/include"
 )
+
+if(TARGET OpenMP::OpenMP_CXX)
+    target_link_libraries(util PRIVATE
+        OpenMP::OpenMP_CXX
+    )
+endif()
