@@ -58,7 +58,7 @@ struct bbox {
     }
 
     // Calculate the center of the bounding box.
-    vec3<real> center() {
+    vec3<real> center() const {
         return (min_pt + max_pt) * real(0.5);
     }
 
