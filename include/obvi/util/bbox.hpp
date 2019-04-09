@@ -165,11 +165,14 @@ struct bbox {
             t1 = (box.min_pt[i] - origin[i]) * inv_dir[i];
             t2 = (box.max_pt[i] - origin[i]) * inv_dir[i];
 
+            // extra max/min calls are to properly handle NaN's that occur when one of the
+            // normalized ray direction elements is zero.
             tmin = std::max(tmin, std::min(std::min(t1, t2), tmax));
             tmax = std::min(tmax, std::max(std::max(t1, t2), tmin));
         }
 
-        return tmax > std::max(tmin, real(0));
+        // Use >= instead of > so that intersections with infinitely-thin planes are handled properly.
+        return tmax >= std::max(tmin, real(0));
     }
 };
 
