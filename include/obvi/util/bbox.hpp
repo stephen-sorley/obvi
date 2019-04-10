@@ -39,8 +39,10 @@ namespace obvi {
 
 template<typename real>
 struct bbox {
-    vec3<real> min_pt;
-    vec3<real> max_pt;
+    using vec3r = vec3<real>;
+
+    vec3r min_pt;
+    vec3r max_pt;
 
     // Bbox is initialized "empty", which means that no intersection tests will succeed
     // against it. This is indicated by setting min_pt.x > max_pt.x.
@@ -58,12 +60,12 @@ struct bbox {
     }
 
     // Calculate the center of the bounding box.
-    vec3<real> center() const {
+    vec3r center() const {
         return (min_pt + max_pt) * real(0.5);
     }
 
     // Expand the bounding box to include the given point.
-    void expand(const vec3<real>& pt) {
+    void expand(const vec3r& pt) {
         if(is_empty()) {
             min_pt = pt;
             max_pt = pt;
@@ -89,35 +91,36 @@ struct bbox {
     }
 
     // point <-> bbox intersection
-    friend bool intersects_point(const bbox& box, const vec3<real>& pt) {
-        return pt.x() >= box.min_pt.x() && pt.x() <= box.max_pt.x()
-            && pt.y() >= box.min_pt.y() && pt.y() <= box.max_pt.y()
-            && pt.z() >= box.min_pt.z() && pt.z() <= box.max_pt.z();
+    bool intersects_point(const vec3r& pt) const {
+        return pt.x() >= min_pt.x() && pt.x() <= max_pt.x()
+            && pt.y() >= min_pt.y() && pt.y() <= max_pt.y()
+            && pt.z() >= min_pt.z() && pt.z() <= max_pt.z();
     }
 
     // bbox <-> bbox intersection
-    friend bool intersects_box(const bbox& box1, const bbox& box2) {
-        if(box1.is_empty() || box2.is_empty()) {
+    bool intersects_box(const bbox& box) const {
+        if(is_empty() || box.is_empty()) {
             return false;
         }
-        return (box1.min_pt.x() <= box2.max_pt.x() && box1.max_pt.x() >= box2.min_pt.x())
-            && (box1.min_pt.y() <= box2.max_pt.y() && box1.max_pt.y() >= box2.min_pt.y())
-            && (box1.min_pt.z() <= box2.max_pt.z() && box1.max_pt.z() >= box2.min_pt.z());
+        return (min_pt.x() <= box.max_pt.x() && max_pt.x() >= box.min_pt.x())
+            && (min_pt.y() <= box.max_pt.y() && max_pt.y() >= box.min_pt.y())
+            && (min_pt.z() <= box.max_pt.z() && max_pt.z() >= box.min_pt.z());
     }
 
     // segment <-> bbox intersection
     //
     // Works using the Separating Axis Theorum (SAT), see the following for details:
     // https://www.gamedev.net/forums/topic/338987-aabb---line-segment-intersection-test/?do=findComment&comment=3209917
-    friend bool intersects_segment(const bbox& box, const vec3<real>& segA, const vec3<real>& segB) {
-        if(box.is_empty()) {
+    bool intersects_segment(const vec3r& seg_a, const vec3r& seg_b) const {
+        if(is_empty()) {
             return false;
         }
-
-        vec3<real> d  = (segB - segA) * real(0.5);
-        vec3<real> e  = (box.max_pt - box.min_pt) * real(0.5);
-        vec3<real> c  = segA + d - (box.max_pt + box.min_pt) * real(0.5);
-        vec3<real> ad = d.abs();
+        vec3r d = (seg_b - seg_a) * real(0.5);
+        return intersects_segment_precalc(d, seg_a + d, d.abs());
+    }
+    bool intersects_segment_precalc(const vec3r &d, const vec3r &seg_a_d, const vec3r &ad) const {
+        vec3r e = (max_pt - min_pt) * real(0.5);
+        vec3r c = seg_a_d - (max_pt + min_pt) * real(0.5);
 
         if(std::abs(c.x()) > e.x() + ad.x()) {
             return false;
@@ -150,28 +153,29 @@ struct bbox {
     //
     // Algorithm taken from the following source (Tavian Barnes, 3/23/2015, public domain):
     //   https://tavianator.com/fast-branchless-raybounding-box-intersections-part-2-nans/
-    friend bool intersects_ray(const bbox& box, const vec3<real>& origin, const vec3<real>& inv_dir) {
-        if(box.is_empty()) {
+    bool intersects_ray(const vec3r& origin, const vec3r& inv_norm_dir) const {
+        if(is_empty()) {
             return false;
         }
 
-        real t1 = (box.min_pt[0] - origin[0]) * inv_dir[0];
-        real t2 = (box.max_pt[0] - origin[0]) * inv_dir[0];
+        real t1 = (min_pt[0] - origin[0]) * inv_norm_dir[0];
+        real t2 = (max_pt[0] - origin[0]) * inv_norm_dir[0];
 
         real tmin = std::min(t1, t2);
         real tmax = std::max(t1, t2);
 
-        for(int i = 1; i < 3; ++i) {
-            t1 = (box.min_pt[i] - origin[i]) * inv_dir[i];
-            t2 = (box.max_pt[i] - origin[i]) * inv_dir[i];
+        for(size_t i = 1; i < 3; ++i) {
+            t1 = (min_pt[i] - origin[i]) * inv_norm_dir[i];
+            t2 = (max_pt[i] - origin[i]) * inv_norm_dir[i];
 
-            // extra max/min calls are to properly handle NaN's that occur when one of the
-            // normalized ray direction elements is zero.
+            // The extra max/min calls are needed to properly handle NaN's that occur when the
+            // ray's origin lies on the same plane as one of the sides of the bbox, and the ray
+            // direction is parallel to that same plane.
             tmin = std::max(tmin, std::min(std::min(t1, t2), tmax));
             tmax = std::min(tmax, std::max(std::max(t1, t2), tmin));
         }
 
-        // Use >= instead of > so that intersections with infinitely-thin planes are handled properly.
+        // Use >= instead of > so that intersections with infinitely-thin planes are detected.
         return tmax >= std::max(tmin, real(0));
     }
 };
