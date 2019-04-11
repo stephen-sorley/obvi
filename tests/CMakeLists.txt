@@ -29,10 +29,11 @@
 add_executable(tests
     tests_main.cpp
 
+    test_affine3.cpp
+    test_bbox.cpp
+    test_mat3.cpp
     test_math.cpp
     test_vec3.cpp
-    test_mat3.cpp
-    test_affine3.cpp
 )
 
 target_link_libraries(tests PRIVATE
