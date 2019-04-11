@@ -229,6 +229,80 @@ TEMPLATE_TEST_CASE("bbox intersection", "[bbox]", float, double) {
         REQUIRE_FALSE( bboxt().intersects_box(bboxt()) );             // both empty
     }
 
-    //TODO: add bbox/segment intersection tests
+    SECTION( "bbox/segment intersection" ) {
+        // Point segment at center.
+        REQUIRE( box.intersects_segment(box.center(), box.center()) );
+
+        // Point segment outside box.
+        REQUIRE_FALSE( box.intersects_segment(vec3t(0,1,2), vec3t(0,1,2)) );
+
+        // Point segment at each corner.
+        REQUIRE( box.intersects_segment(vec3t(1,2,3), vec3t(1,2,3)) );
+        REQUIRE( box.intersects_segment(vec3t(4,2,3), vec3t(4,2,3)) );
+        REQUIRE( box.intersects_segment(vec3t(4,5,3), vec3t(4,5,3)) );
+        REQUIRE( box.intersects_segment(vec3t(1,5,3), vec3t(1,5,3)) );
+        REQUIRE( box.intersects_segment(vec3t(1,2,6), vec3t(1,2,6)) );
+        REQUIRE( box.intersects_segment(vec3t(4,2,6), vec3t(4,2,6)) );
+        REQUIRE( box.intersects_segment(vec3t(4,5,6), vec3t(4,5,6)) );
+        REQUIRE( box.intersects_segment(vec3t(1,5,6), vec3t(1,5,6)) );
+
+        // Exact edges of box.
+        REQUIRE( box.intersects_segment(vec3t(1,2,3), vec3t(4,2,3)) );
+        REQUIRE( box.intersects_segment(vec3t(4,2,3), vec3t(1,2,3)) );
+        REQUIRE( box.intersects_segment(vec3t(4,2,3), vec3t(4,5,3)) );
+        REQUIRE( box.intersects_segment(vec3t(4,5,3), vec3t(4,2,3)) );
+        REQUIRE( box.intersects_segment(vec3t(4,5,3), vec3t(1,5,3)) );
+        REQUIRE( box.intersects_segment(vec3t(1,5,3), vec3t(4,5,3)) );
+        REQUIRE( box.intersects_segment(vec3t(1,5,3), vec3t(1,2,3)) );
+        REQUIRE( box.intersects_segment(vec3t(1,2,3), vec3t(1,5,3)) );
+
+        REQUIRE( box.intersects_segment(vec3t(1,2,6), vec3t(4,2,6)) );
+        REQUIRE( box.intersects_segment(vec3t(4,2,6), vec3t(1,2,6)) );
+        REQUIRE( box.intersects_segment(vec3t(4,2,6), vec3t(4,5,6)) );
+        REQUIRE( box.intersects_segment(vec3t(4,5,6), vec3t(4,2,6)) );
+        REQUIRE( box.intersects_segment(vec3t(4,5,6), vec3t(1,5,6)) );
+        REQUIRE( box.intersects_segment(vec3t(1,5,6), vec3t(4,5,6)) );
+        REQUIRE( box.intersects_segment(vec3t(1,5,6), vec3t(1,2,6)) );
+        REQUIRE( box.intersects_segment(vec3t(1,2,6), vec3t(1,5,6)) );
+
+        REQUIRE( box.intersects_segment(vec3t(1,2,3), vec3t(1,2,6)) );
+        REQUIRE( box.intersects_segment(vec3t(1,2,6), vec3t(1,2,3)) );
+        REQUIRE( box.intersects_segment(vec3t(4,2,3), vec3t(4,2,6)) );
+        REQUIRE( box.intersects_segment(vec3t(4,2,6), vec3t(4,2,3)) );
+        REQUIRE( box.intersects_segment(vec3t(4,5,3), vec3t(4,5,6)) );
+        REQUIRE( box.intersects_segment(vec3t(4,5,6), vec3t(4,5,3)) );
+        REQUIRE( box.intersects_segment(vec3t(1,5,3), vec3t(1,5,6)) );
+        REQUIRE( box.intersects_segment(vec3t(1,5,6), vec3t(1,5,3)) );
+
+        // Segments intersects only at corner.
+        REQUIRE( box.intersects_segment(vec3t(0,3,2.5), vec3t(2,1,3.5)) );
+        REQUIRE( box.intersects_segment(vec3t(3,1,3.5), vec3t(5,3,2.5)) );
+        REQUIRE( box.intersects_segment(vec3t(5,4,2.5), vec3t(3,6,3.5)) );
+        REQUIRE( box.intersects_segment(vec3t(2,6,3.5), vec3t(0,4,2.5)) );
+        REQUIRE( box.intersects_segment(vec3t(0,3,5.5), vec3t(2,1,6.5)) );
+        REQUIRE( box.intersects_segment(vec3t(3,1,6.5), vec3t(5,3,5.5)) );
+        REQUIRE( box.intersects_segment(vec3t(5,4,5.5), vec3t(3,6,6.5)) );
+        REQUIRE( box.intersects_segment(vec3t(2,6,6.5), vec3t(0,4,5.5)) );
+
+        // Both ends of segment inside box.
+        REQUIRE( box.intersects_segment(vec3t(2,4,5), vec3t(3,3,4)) );
+
+        // Both ends of segment outside box.
+        REQUIRE( box.intersects_segment(vec3t(0,6,7), vec3t(5,1,2)) );
+
+        // Half in, half out.
+        REQUIRE( box.intersects_segment(vec3t(-0.5,3.5,4.5), vec3t(2.5,3.5,4.5)) ); // -X
+        REQUIRE( box.intersects_segment(vec3t(2.5,3.5,4.5), vec3t(5.5,3.5,4.5)) );  // +X
+        REQUIRE( box.intersects_segment(vec3t(2.5,0.5,4.5), vec3t(2.5,3.5,4.5)) );  // -Y
+        REQUIRE( box.intersects_segment(vec3t(2.5,3.5,4.5), vec3t(2.5,6.5,4.5)) );  // +Y
+        REQUIRE( box.intersects_segment(vec3t(2.5,3.5,1.5), vec3t(2.5,3.5,4.5)) );  // -Z
+        REQUIRE( box.intersects_segment(vec3t(2.5,3.5,4.5), vec3t(2.5,3.5,7.5)) );  // +Z
+
+        // Outside by one dimension.
+        REQUIRE_FALSE( box.intersects_segment(vec3t(5,2,3), vec3t(5,5,3)) ); // off by +1 x
+        REQUIRE_FALSE( box.intersects_segment(vec3t(1,1,3), vec3t(4,1,3)) ); // off by -1 y
+        REQUIRE_FALSE( box.intersects_segment(vec3t(1,2,2), vec3t(4,5,2)) ); // off by -1 z
+    }
+
     //TODO: add bbox/ray intersection tests
 }
