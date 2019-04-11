@@ -48,7 +48,11 @@ struct bbox {
     // against it. This is indicated by setting min_pt.x > max_pt.x.
     bbox() : min_pt(1,0,0), max_pt(-1,0,0) {}
 
-    explicit bbox(const vec3<real>& pt) : min_pt(pt), max_pt(pt) {}
+    bbox(const real& xmin, const real& ymin, const real& zmin,
+         const real& xmax, const real& ymax, const real& zmax)
+        : min_pt(xmin,ymin,zmin), max_pt(xmax,ymax,zmax) {}
+
+    explicit bbox(const vec3r& pt) : min_pt(pt), max_pt(pt) {}
 
     bool is_empty() const {
         return min_pt.x() > max_pt.x();
