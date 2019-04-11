@@ -5,6 +5,7 @@
 # Options:
 #   ADD_FLAGS_STRICT_WARNINGS: display type conversion and other verbose warnings (defaults to FALSE)
 #   ADD_FLAGS_HARDEN: add flags to security harden the code (defaults to FALSE)
+#   ADD_FLAGS_DISABLE_IPO: don't use interprocedural optimization on release builds (defaults to FALSE)
 #
 # # # # # # # # # # # #
 # The MIT License (MIT)
@@ -44,10 +45,12 @@ set(CMAKE_LINK_DEPENDS_NO_SHARED TRUE)
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
 # Use interprocedural optimization for release builds, if supported by toolchain.
-include(CheckIPOSupported)
-check_ipo_supported(RESULT res OUTPUT out)
-if(res)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+if(NOT ADD_FLAGS_DISABLE_IPO)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT res OUTPUT out)
+    if(res)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+    endif()
 endif()
 
 if(MSVC)
