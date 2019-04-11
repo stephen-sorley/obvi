@@ -174,7 +174,61 @@ TEMPLATE_TEST_CASE("bbox intersection", "[bbox]", float, double) {
         REQUIRE_FALSE( box.intersects_point(vec3t(1,2,7)) );
     }
 
-    //TODO: add bbox/bbox intersection tests
+    SECTION( "bbox/bbox intersection" ) {
+        // Exact same box.
+        REQUIRE( box.intersects_box(box) );
+
+        // Point box at center.
+        REQUIRE( box.intersects_box(bboxt(box.center())) );
+
+        // Point-box on each corner.
+        REQUIRE( box.intersects_box(bboxt(1,2,3, 1,2,3)));
+        REQUIRE( box.intersects_box(bboxt(4,2,3, 4,2,3)));
+        REQUIRE( box.intersects_box(bboxt(1,5,3, 1,5,3)));
+        REQUIRE( box.intersects_box(bboxt(4,5,3, 4,5,3)));
+        REQUIRE( box.intersects_box(bboxt(1,2,6, 1,2,6)));
+        REQUIRE( box.intersects_box(bboxt(4,2,6, 4,2,6)));
+        REQUIRE( box.intersects_box(bboxt(1,5,6, 1,5,6)));
+        REQUIRE( box.intersects_box(bboxt(4,5,6, 4,5,6)));
+
+        // Only share a corner (box with volume).
+        REQUIRE( box.intersects_box(bboxt(0,1,2, 1,2,3)) );
+        REQUIRE( box.intersects_box(bboxt(4,1,2, 5,2,3)) );
+        REQUIRE( box.intersects_box(bboxt(4,5,2, 5,6,3)) );
+        REQUIRE( box.intersects_box(bboxt(0,5,2, 1,6,3)) );
+        REQUIRE( box.intersects_box(bboxt(0,1,6, 1,2,7)) );
+        REQUIRE( box.intersects_box(bboxt(4,1,5, 5,2,6)) );
+        REQUIRE( box.intersects_box(bboxt(4,5,6, 5,6,7)) );
+        REQUIRE( box.intersects_box(bboxt(0,5,6, 1,6,7)) );
+
+        // Box2 completely surrounds Box1.
+        REQUIRE( box.intersects_box(bboxt(0,1,2, 5,6,7)) );
+
+        // Box2 completely inside Box1.
+        REQUIRE( box.intersects_box(bboxt(2,3,4, 3,4,5)) );
+
+        // Half inside, half outside.
+        REQUIRE( box.intersects_box(bboxt(-0.5,3,4, 2.5,4,5)) ); // -X
+        REQUIRE( box.intersects_box(bboxt(2.5,3,4, 5.5,4,5)) );  // +X
+        REQUIRE( box.intersects_box(bboxt(2,0.5,4, 3,3.5,5)) );  // -Y
+        REQUIRE( box.intersects_box(bboxt(2,3.5,4, 3,6.5,5)) );  // +Y
+        REQUIRE( box.intersects_box(bboxt(2,3,1.5, 3,4,4.5)) );  // -Z
+        REQUIRE( box.intersects_box(bboxt(2,3,4.5, 3,4,7.5)) );  // +Z
+
+        // Just outside.
+        REQUIRE_FALSE( box.intersects_box(bboxt(-3.5,3,4, -0.5,4,5)) ); // -X
+        REQUIRE_FALSE( box.intersects_box(bboxt(5.5,3,4, 8.5,4,5)) );   // +X
+        REQUIRE_FALSE( box.intersects_box(bboxt(2,-2.5,4, 3,0.5,5)) );  // -Y
+        REQUIRE_FALSE( box.intersects_box(bboxt(2,6.5,4, 3,9.5,5)) );   // +Y
+        REQUIRE_FALSE( box.intersects_box(bboxt(2,3,-1.5, 3,4,1.5)) );  // -Z
+        REQUIRE_FALSE( box.intersects_box(bboxt(2,3,7.5, 3,4,10.5)) );  // +Z
+
+        // Empty box.
+        REQUIRE_FALSE( box.intersects_box(bboxt()) );                 // box2 empty
+        REQUIRE_FALSE( bboxt().intersects_box(bboxt(1,2,3, 4,5,6)) ); // box1 empty
+        REQUIRE_FALSE( bboxt().intersects_box(bboxt()) );             // both empty
+    }
+
     //TODO: add bbox/segment intersection tests
     //TODO: add bbox/ray intersection tests
 }
