@@ -34,7 +34,7 @@
 using obvi::affine3;
 using obvi::mat3;
 using obvi::vec3;
-using namespace Catch::literals; // To get "_a" UDL for approvimate floating-point values.
+using namespace Catch::literals; // To get "_a" UDL for approximate floating-point values.
 
 #ifndef M_PI
 #  define M_PI 3.14159265358979323846
