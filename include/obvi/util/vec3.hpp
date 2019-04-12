@@ -31,6 +31,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <algorithm> // for std::min and std::max
 
 namespace obvi {
 
@@ -227,10 +228,37 @@ struct vec3
         return vec3(norm/x(), norm/y(), norm/z());
     }
 
+    real min_component() const {
+        return std::min(pt[0], std::min(pt[1], pt[2]));
+    }
+    real max_component() const {
+        return std::max(pt[0], std::max(pt[1], pt[2]));
+    }
 };
 
 using vec3f = vec3<float>;
 using vec3d = vec3<double>;
 
 } // END namespace obvi
+
+namespace std {
+template<typename real>
+obvi::vec3<real> min(const obvi::vec3<real>& a, const obvi::vec3<real>& b) {
+    return obvi::vec3<real>(
+        std::min(a.pt[0],b.pt[0]),
+        std::min(a.pt[1],b.pt[1]),
+        std::min(a.pt[2],b.pt[2])
+    );
+}
+
+template<typename real>
+obvi::vec3<real> max(const obvi::vec3<real>& a, const obvi::vec3<real>& b) {
+    return obvi::vec3<real>(
+        std::max(a.pt[0],b.pt[0]),
+        std::max(a.pt[1],b.pt[1]),
+        std::max(a.pt[2],b.pt[2])
+    );
+}
+} // END namespace std
+
 #endif //OBVI_VEC3_HPP

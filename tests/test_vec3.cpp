@@ -196,4 +196,21 @@ TEMPLATE_TEST_CASE("vec3 math", "[vec3]", float, double) {
         w = v.normalized();
         VEC3_EQUAL(w, 0.2672612_a, 0.5345225_a, 0.8017837_a);
     }
+
+    SECTION( "min/max" ) {
+        using vec3t = vec3<TestType>;
+
+        REQUIRE( vec3t(1,5,7).min_component() == 1 );
+        REQUIRE( vec3t(7,1,5).min_component() == 1 );
+        REQUIRE( vec3t(5,7,1).min_component() == 1 );
+
+        REQUIRE( vec3t(1,5,7).max_component() == 7 );
+        REQUIRE( vec3t(7,1,5).max_component() == 7 );
+        REQUIRE( vec3t(5,7,1).max_component() == 7 );
+
+        v.set(1,5,7);
+        w.set(2,3,6);
+        VEC3_EQUAL(std::min(v,w), 1, 3, 6);
+        VEC3_EQUAL(std::max(v,w), 2, 5, 7);
+    }
 }
