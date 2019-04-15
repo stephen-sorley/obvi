@@ -155,32 +155,34 @@ struct bbox {
     // origin: origin of ray
     // inv_dir: element-wise inverse (reciprocal) of normalized ray direction vector
     //
-    // Algorithm taken from the following source (Tavian Barnes, 3/23/2015, public domain):
-    //   https://tavianator.com/fast-branchless-raybounding-box-intersections-part-2-nans/
     bool intersects_ray(const vec3r& origin, const vec3r& inv_norm_dir) const {
         if(is_empty()) {
             return false;
         }
 
-        real t1 = (min_pt[0] - origin[0]) * inv_norm_dir[0];
-        real t2 = (max_pt[0] - origin[0]) * inv_norm_dir[0];
+        // Naive algorithm, adapted from the following source (Andrew Kensler, public domain):
+        //   psgraphics.blogspot.com/2016/02/new-simple-ray-box-test-from-andrew.html
+        //
+        // Kinda slow, but is definitely correct in all edge cases.
+        //
+        // TODO: figure out how to make this faster, while still detecting intersections with
+        //       infinitely thin planes.
+        real tmax = std::numeric_limits<real>::infinity();
+        real tmin = -tmax;
+        for(size_t i=0; i<3; ++i) {
+            if(!std::isinf(inv_norm_dir[i])) { // Avoid NaN's from 0 * INF
+                real t0 = (min_pt[i] - origin[i]) * inv_norm_dir[i];
+                real t1 = (max_pt[i] - origin[i]) * inv_norm_dir[i];
 
-        real tmin = std::min(t1, t2);
-        real tmax = std::max(t1, t2);
-
-        for(size_t i = 1; i < 3; ++i) {
-            t1 = (min_pt[i] - origin[i]) * inv_norm_dir[i];
-            t2 = (max_pt[i] - origin[i]) * inv_norm_dir[i];
-
-            // The extra max/min calls are needed to properly handle NaN's that occur when the
-            // ray's origin lies on the same plane as one of the sides of the bbox, and the ray
-            // direction is parallel to that same plane.
-            tmin = std::max(tmin, std::min(std::min(t1, t2), tmax));
-            tmax = std::min(tmax, std::max(std::max(t1, t2), tmin));
+                tmin = std::max(tmin, std::min(t0, t1));
+                tmax = std::min(tmax, std::max(t0, t1));
+            } else if (origin[i] < min_pt[i] || origin[i] > max_pt[i]) {
+                return false;
+            }
         }
-
-        // Use >= instead of > so that intersections with infinitely-thin planes are detected.
-        return tmax >= std::max(tmin, real(0));
+        //static constexpr real epsfac = real(1) + real(2) * std::numeric_limits<real>::epsilon();
+        //tmax *= epsfac;
+        return tmax >= tmin && tmax >= real(0);
     }
 };
 

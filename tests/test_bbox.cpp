@@ -304,5 +304,150 @@ TEMPLATE_TEST_CASE("bbox intersection", "[bbox]", float, double) {
         REQUIRE_FALSE( box.intersects_segment(vec3t(1,2,2), vec3t(4,5,2)) ); // off by -1 z
     }
 
-    //TODO: add bbox/ray intersection tests
+    SECTION( "bbox/ray intersection" ) {
+        static const vec3t xpos = vec3t(1,0,0).inv(), xneg = vec3t(-1,0,0).inv(),
+                           ypos = vec3t(0,1,0).inv(), yneg = vec3t(0,-1,0).inv(),
+                           zpos = vec3t(0,0,1).inv(), zneg = vec3t(0,0,-1).inv();
+
+        // Origin inside box.
+        REQUIRE( box.intersects_ray(box.center(), vec3t(1,2,3).norm_inv()) );
+
+        // Origin outside box, but direction points to center.
+        REQUIRE( box.intersects_ray(vec3t(-3,-4,-5), (box.center() - vec3t(-3,-4,-5)).norm_inv()) );
+
+        // Origin outside box, direction points away from center (but would intersect if ray
+        // was an infinite line instead).
+        REQUIRE_FALSE( box.intersects_ray(vec3t(-3,-4,-5),
+            (vec3t(-3,-4,-5).norm_inv() - box.center()).norm_inv()) );
+
+        // Origin outside box, ray pointed at center of each box face.
+        REQUIRE( box.intersects_ray(vec3t(0,      T(3.5), T(4.5)), xpos) ); // -X face
+        REQUIRE( box.intersects_ray(vec3t(10,     T(3.5), T(4.5)), xneg) ); // +X face
+        REQUIRE( box.intersects_ray(vec3t(T(2.5), 0,      T(4.5)), ypos) ); // -Y face
+        REQUIRE( box.intersects_ray(vec3t(T(2.5), 10,     T(4.5)), yneg) ); // +Y face
+        REQUIRE( box.intersects_ray(vec3t(T(2.5), T(3.5), 0),      zpos) ); // -Z face
+        REQUIRE( box.intersects_ray(vec3t(T(2.5), T(3.5), 10),     zneg) ); // +Z face
+
+        // Origin at each box corner, rest of ray doesn't intersect box.
+        REQUIRE( box.intersects_ray(vec3t(1,2,3), yneg) );
+        REQUIRE( box.intersects_ray(vec3t(4,2,3), xpos) );
+        REQUIRE( box.intersects_ray(vec3t(4,5,3), zneg) );
+        REQUIRE( box.intersects_ray(vec3t(1,5,3), xneg) );
+        REQUIRE( box.intersects_ray(vec3t(1,2,6), zpos) );
+        REQUIRE( box.intersects_ray(vec3t(4,2,6), yneg) );
+        REQUIRE( box.intersects_ray(vec3t(4,5,6), ypos) );
+        REQUIRE( box.intersects_ray(vec3t(1,5,6), zpos) );
+
+        // Origin at each box corner, ray along each connected edge.
+        REQUIRE( box.intersects_ray(vec3t(1,2,3), xpos) );
+        REQUIRE( box.intersects_ray(vec3t(1,2,3), ypos) );
+        REQUIRE( box.intersects_ray(vec3t(1,2,3), zpos) );
+
+        REQUIRE( box.intersects_ray(vec3t(4,2,3), xneg) );
+        REQUIRE( box.intersects_ray(vec3t(4,2,3), ypos) );
+        REQUIRE( box.intersects_ray(vec3t(4,2,3), zpos) );
+
+        REQUIRE( box.intersects_ray(vec3t(4,5,3), xneg) );
+        REQUIRE( box.intersects_ray(vec3t(4,5,3), yneg) );
+        REQUIRE( box.intersects_ray(vec3t(4,5,3), zpos) );
+
+        REQUIRE( box.intersects_ray(vec3t(1,5,3), xpos) );
+        REQUIRE( box.intersects_ray(vec3t(1,5,3), yneg) );
+        REQUIRE( box.intersects_ray(vec3t(1,5,3), zpos) );
+
+        REQUIRE( box.intersects_ray(vec3t(1,2,6), xpos) );
+        REQUIRE( box.intersects_ray(vec3t(1,2,6), ypos) );
+        REQUIRE( box.intersects_ray(vec3t(1,2,6), zneg) );
+
+        REQUIRE( box.intersects_ray(vec3t(4,2,6), xneg) );
+        REQUIRE( box.intersects_ray(vec3t(4,2,6), ypos) );
+        REQUIRE( box.intersects_ray(vec3t(4,2,6), zneg) );
+
+        REQUIRE( box.intersects_ray(vec3t(4,5,6), xneg) );
+        REQUIRE( box.intersects_ray(vec3t(4,5,6), yneg) );
+        REQUIRE( box.intersects_ray(vec3t(4,5,6), zneg) );
+
+        REQUIRE( box.intersects_ray(vec3t(1,5,6), xpos) );
+        REQUIRE( box.intersects_ray(vec3t(1,5,6), yneg) );
+        REQUIRE( box.intersects_ray(vec3t(1,5,6), zneg) );
+
+        // Origin not in box, but ray contains a box edge.
+        REQUIRE( box.intersects_ray(vec3t(0,2,3), xpos) );
+        REQUIRE( box.intersects_ray(vec3t(1,1,3), ypos) );
+        REQUIRE( box.intersects_ray(vec3t(1,2,2), zpos) );
+
+        REQUIRE( box.intersects_ray(vec3t(5,2,3), xneg) );
+        REQUIRE( box.intersects_ray(vec3t(4,1,3), ypos) );
+        REQUIRE( box.intersects_ray(vec3t(4,2,2), zpos) );
+
+        REQUIRE( box.intersects_ray(vec3t(5,5,3), xneg) );
+        REQUIRE( box.intersects_ray(vec3t(4,6,3), yneg) );
+        REQUIRE( box.intersects_ray(vec3t(4,5,2), zpos) );
+
+        REQUIRE( box.intersects_ray(vec3t(0,5,3), xpos) );
+        REQUIRE( box.intersects_ray(vec3t(1,6,3), yneg) );
+        REQUIRE( box.intersects_ray(vec3t(1,5,2), zpos) );
+
+        REQUIRE( box.intersects_ray(vec3t(0,2,6), xpos) );
+        REQUIRE( box.intersects_ray(vec3t(1,1,6), ypos) );
+        REQUIRE( box.intersects_ray(vec3t(1,2,7), zneg) );
+
+        REQUIRE( box.intersects_ray(vec3t(5,2,6), xneg) );
+        REQUIRE( box.intersects_ray(vec3t(4,1,6), ypos) );
+        REQUIRE( box.intersects_ray(vec3t(4,2,7), zneg) );
+
+        REQUIRE( box.intersects_ray(vec3t(5,5,6), xneg) );
+        REQUIRE( box.intersects_ray(vec3t(4,6,6), yneg) );
+        REQUIRE( box.intersects_ray(vec3t(4,5,7), zneg) );
+
+        REQUIRE( box.intersects_ray(vec3t(0,5,6), xpos) );
+        REQUIRE( box.intersects_ray(vec3t(1,6,6), yneg) );
+        REQUIRE( box.intersects_ray(vec3t(1,5,7), zneg) );
+
+        // Origin not in box, ray pointed in wrong direction (but would be on edge if it was right).
+        REQUIRE_FALSE( box.intersects_ray(vec3t(0,2,3), xneg) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(1,1,3), yneg) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(1,2,2), zneg) );
+
+        REQUIRE_FALSE( box.intersects_ray(vec3t(5,2,3), xpos) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(4,1,3), yneg) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(4,2,2), zneg) );
+
+        REQUIRE_FALSE( box.intersects_ray(vec3t(5,5,3), xpos) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(4,6,3), ypos) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(4,5,2), zneg) );
+
+        REQUIRE_FALSE( box.intersects_ray(vec3t(0,5,3), xneg) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(1,6,3), ypos) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(1,5,2), zneg) );
+
+        REQUIRE_FALSE( box.intersects_ray(vec3t(0,2,6), xneg) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(1,1,6), yneg) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(1,2,7), zpos) );
+
+        REQUIRE_FALSE( box.intersects_ray(vec3t(5,2,6), xpos) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(4,1,6), yneg) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(4,2,7), zpos) );
+
+        REQUIRE_FALSE( box.intersects_ray(vec3t(5,5,6), xpos) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(4,6,6), ypos) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(4,5,7), zpos) );
+
+        REQUIRE_FALSE( box.intersects_ray(vec3t(0,5,6), xneg) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(1,6,6), ypos) );
+        REQUIRE_FALSE( box.intersects_ray(vec3t(1,5,7), zpos) );
+
+        // Infinitely thin boxes.
+        box = bboxt(1,2,3, 1,5,6); //no width in x direction
+        REQUIRE( box.intersects_ray(vec3t(0,T(3.5),T(4.5)),  xpos) );
+        REQUIRE( box.intersects_ray(vec3t(10,T(3.5),T(4.5)), xneg) );
+
+        box = bboxt(1,2,3, 4,2,6); //no width in y direction
+        REQUIRE( box.intersects_ray(vec3t(T(2.5),0,T(4.5)),  ypos) );
+        REQUIRE( box.intersects_ray(vec3t(T(2.5),10,T(4.5)), yneg) );
+
+        box = bboxt(1,2,3, 4,5,3); //no width in z direction
+        REQUIRE( box.intersects_ray(vec3t(T(2.5),T(3.5),0),  zpos) );
+        REQUIRE( box.intersects_ray(vec3t(T(2.5),T(3.5),10), zneg) );
+    }
 }
