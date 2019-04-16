@@ -34,6 +34,8 @@ project(Obvi
     LANGUAGES CXX
 )
 
+include(InstallDeps)
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set up compiler and linker options.
 set(ADD_FLAGS_STRICT_WARNINGS TRUE) # Enable verbose warnings.
@@ -48,8 +50,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Find third-party dependencies.
+set(qt_libs
+    Gui
+    Core
+)
 include(AddQtPath)
-find_package(Qt5 REQUIRED COMPONENTS Widgets)
+find_package(Qt5 REQUIRED COMPONENTS ${qt_libs})
+list(TRANSFORM qt_libs PREPEND "Qt5::")
 
 find_package(OpenMP QUIET COMPONENTS CXX)
 
@@ -63,9 +70,28 @@ add_subdirectory(tests)
 
 add_executable(obvi
     main.cpp
+    main_window.cpp
+)
+
+set_target_properties(obvi PROPERTIES
+    AUTOMOC TRUE
 )
 
 target_link_libraries(obvi PRIVATE
-    Qt5::Widgets
+    ${qt_libs}
     util
 )
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Install rules.
+install(TARGETS obvi
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+
+install_deps(lib bin
+    ${qt_libs}
+)
+
+install_deps_system(lib bin)

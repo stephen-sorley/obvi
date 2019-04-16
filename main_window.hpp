@@ -1,4 +1,6 @@
-/* Main executable for Obvi.
+/* Header for main GUI window.
+ *
+ * Just a basic OpenGL display with no controls (for now).
  *
  * * * * * * * * * * * *
  * The MIT License (MIT)
@@ -24,34 +26,27 @@
  * THE SOFTWARE.
  * * * * * * * * * * * *
  */
+#ifndef OBVI_MAIN_WINDOW_HPP
+#define OBVI_MAIN_WINDOW_HPP
 
-#include <QGuiApplication>
-#include <QScreen>
-#include <QDebug>
+#include <QOpenGLWindow>
+#include <QOpenGLFunctions>
 
-#include <algorithm>
+namespace obvi {
 
-#include "main_window.hpp"
+struct main_window : public QOpenGLWindow, protected QOpenGLFunctions {
+    Q_OBJECT
 
-int main(int argc, char *argv[])
-{
-    QGuiApplication app(argc, argv);
+public:
+    // Functions from QOpenGLWindow that are called by Qt during rendering.
+    void initializeGL();
+    void resizeGL(int width, int height);
+    void paintGL();
 
-    obvi::main_window mainwin;
+private:
+    void print_context_info();
+};
 
-    // Set our required OpenGL type and version.
-    QSurfaceFormat format;
-    format.setRenderableType(QSurfaceFormat::OpenGL);
-    format.setProfile(QSurfaceFormat::CoreProfile); // Leave out old stuff from before OpenGL 3.
-    format.setVersion(4,3); // OpenGL 4.3
-    mainwin.setFormat(format); // MUST be called BEFORE show().
+} // END namespace obvi
 
-    // Set window size (use fraction of screen geometry, so it is independent of screen resolution).
-    QRect screen_size = mainwin.screen()->availableGeometry();
-    int   dim         = int(std::min(screen_size.width(), screen_size.height()) * 0.7 + 0.5);
-    mainwin.resize(dim, dim);
-
-    // Make the window visible (begins OpenGL rendering), and start the app's main event loop.
-    mainwin.show();
-    return app.exec();
-}
+#endif // OBVI_MAIN_WINDOW_HPP
