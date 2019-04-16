@@ -28,6 +28,33 @@
 
 #include <QDebug>
 
+// TODO: read data from disk instead of relying on hardcoded vertex data below.
+namespace {
+    static constexpr GLfloat vertex_data[] = {
+    //        Position           Color
+         0.00f, 0.75f,1.0f,  1.0f,0.0f,0.0f,  //vertex 0
+        -0.75f,-0.75f,1.0f,  0.0f,0.0f,1.0f,  //vertex 1
+         0.75f,-0.75f,1.0f,  0.0f,1.0f,0.0f,  //vertex 2
+    };
+
+    static constexpr size_t num_vertices = sizeof(vertex_data) / (6 * sizeof(vertex_data[0]));
+
+    static constexpr GLfloat mat4_identity[] = {
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+    };
+}
+
+obvi::main_window::~main_window() {
+    // Clean up OpenGL objects.
+    makeCurrent();
+    v_obj.destroy();
+    v_buffer.destroy();
+    program.removeAllShaders();
+}
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // OpenGL rendering callbacks.
 void obvi::main_window::initializeGL() {
@@ -35,6 +62,50 @@ void obvi::main_window::initializeGL() {
     print_context_info(); // for debugging purposes only
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+    // Hardcode a triangle in OpenGL state.
+    {
+        // Compile and link shader code from resource files we bundled inside the executable.
+        //   see: shaders/*.{vert,frag}
+        program.addCacheableShaderFromSourceFile(QOpenGLShader::Vertex, ":/flat.vert");
+        program.addCacheableShaderFromSourceFile(QOpenGLShader::Fragment, ":/flat.frag");
+        program.link();
+        program.bind();
+        int loc_position   = program.attributeLocation("position");
+        int loc_color      = program.attributeLocation("color");
+        int loc_modelview  = program.uniformLocation("mv");
+        int loc_projection = program.uniformLocation("mvp");
+        int loc_light_dir  = program.uniformLocation("light_dir");
+        int loc_diff_frac  = program.uniformLocation("diff_frac");
+        int loc_ambi_frac  = program.uniformLocation("ambi_frac");
+
+        // Create buffer to store vertex data in, and fill it with hardcoded values.
+        v_buffer.create();
+        v_buffer.bind();
+        v_buffer.setUsagePattern(QOpenGLBuffer::StaticDraw);
+        v_buffer.allocate(vertex_data, int(sizeof(vertex_data)));
+
+        // Create Vertex Array Object, store state values we'll use to draw an object.
+        v_obj.create();
+        v_obj.bind();
+
+        program.enableAttributeArray(loc_position);
+        program.enableAttributeArray(loc_color);
+        program.setAttributeBuffer(loc_position, GL_FLOAT, 0, 3, sizeof(float)*6);
+        program.setAttributeBuffer(loc_color, GL_FLOAT, sizeof(float)*3, 3, sizeof(float)*6);
+
+        program.setUniformValue(loc_modelview, QMatrix4x4(mat4_identity).transposed());
+        program.setUniformValue(loc_projection, QMatrix4x4(mat4_identity).transposed());
+
+        program.setUniformValue(loc_light_dir, 0.0f, 0.0f, 1.0f); //light coming straight from camera
+        program.setUniformValue(loc_diff_frac, 0.7f);
+        program.setUniformValue(loc_ambi_frac, 0.3f);
+
+        // Unbind everything we just set.
+        v_obj.release();
+        v_buffer.release();
+        program.release();
+    }
 }
 
 void obvi::main_window::resizeGL(int width, int height) {
@@ -44,6 +115,15 @@ void obvi::main_window::resizeGL(int width, int height) {
 void obvi::main_window::paintGL() {
     // Clear previous contents of buffer by setting every pixel to the clear color.
     glClear(GL_COLOR_BUFFER_BIT);
+
+    // Draw.
+    program.bind();
+    {
+        v_obj.bind();
+        glDrawArrays(GL_TRIANGLES, 0, num_vertices);
+        v_obj.release();
+    }
+    program.release();
 }
 
 

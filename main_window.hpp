@@ -31,6 +31,9 @@
 
 #include <QOpenGLWindow>
 #include <QOpenGLFunctions>
+#include <QOpenGLBuffer>
+#include <QOpenGLVertexArrayObject>
+#include <QOpenGLShaderProgram>
 
 namespace obvi {
 
@@ -38,13 +41,21 @@ struct main_window : public QOpenGLWindow, protected QOpenGLFunctions {
     Q_OBJECT
 
 public:
+    ~main_window();
+
     // Functions from QOpenGLWindow that are called by Qt during rendering.
     void initializeGL();
     void resizeGL(int width, int height);
     void paintGL();
 
 private:
+    // Helper functions.
     void print_context_info();
+
+    // OpenGL object state.
+    QOpenGLBuffer            v_buffer;
+    QOpenGLVertexArrayObject v_obj;
+    QOpenGLShaderProgram     program;
 };
 
 } // END namespace obvi

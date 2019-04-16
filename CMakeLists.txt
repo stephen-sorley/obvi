@@ -71,10 +71,13 @@ add_subdirectory(tests)
 add_executable(obvi
     main.cpp
     main_window.cpp
+
+    shaders/shaders.qrc
 )
 
 set_target_properties(obvi PROPERTIES
     AUTOMOC TRUE
+    AUTORCC TRUE
 )
 
 target_link_libraries(obvi PRIVATE
