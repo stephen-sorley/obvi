@@ -312,8 +312,8 @@ private:
     // Compute (ortho projection * aff), store column-wise in arr for export to OpenGL.
     template<typename GLreal>
     void to_gl_internal_orthographic(std::array<GLreal, 16>& arr, const affine3<real>& aff) const {
-        const affine3<real>& rot = aff.rotation();
-        const vec3<real>& tr     = aff.translation();
+        const mat3<real>& rot = aff.rotation();
+        const vec3<real>& tr  = aff.translation();
 
         // Initialize with all zeros.
         arr.fill(GLreal(0));
@@ -346,8 +346,8 @@ private:
     // Compute (perspective projection * aff), store column-wise in arr for export to OpenGL.
     template<typename GLreal>
     void to_gl_internal_perspective(std::array<GLreal, 16>& arr, const affine3<real>& aff) const {
-        const affine3<real>& rot = aff.rotation();
-        const vec3<real>& tr     = aff.translation();
+        const mat3<real>& rot = aff.rotation();
+        const vec3<real>& tr  = aff.translation();
 
         // Initialize with all zeros.
         arr.fill(GLreal(0));
