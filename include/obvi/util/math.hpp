@@ -39,6 +39,16 @@ namespace obvi {
     template<typename real>
     constexpr real pi = real(3.141592653589793238462643383279502884197L);
 
+    template<typename real>
+    static inline constexpr real deg2rad(const real& deg) {
+        return deg * (pi<real> / real(180));
+    }
+
+    template<typename real>
+    static inline constexpr real rad2deg(const real& rad) {
+        return rad * (real(180) / pi<real>);
+    }
+
     static inline uint32_t count_leading_zeros(uint32_t x) {
 #if defined(__GNUC__)
         // GCC or Clang
