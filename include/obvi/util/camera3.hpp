@@ -106,6 +106,11 @@ struct camera3
         return invview;
     }
 
+    // Return camera's position, in world coordinates.
+    const vec3<real>& get_position() const {
+        return invview.translation();
+    }
+
     // Set the camera's projection matrix (basially, this describes the camera's lens).
     // For typical scenes, just use set_perspective(). This function is only useful if you
     // need an orthographic projection, or an off-axis perspective projection.
