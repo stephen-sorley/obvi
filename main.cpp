@@ -44,6 +44,7 @@ int main(int argc, char *argv[])
     format.setRenderableType(QSurfaceFormat::OpenGL);
     format.setProfile(QSurfaceFormat::CoreProfile); // Leave out old stuff from before OpenGL 3.
     format.setVersion(4,3); // OpenGL 4.3
+    format.setSamples(4); // Enable multisampling.
     mainwin.setFormat(format); // MUST be called BEFORE show().
 
     // Set window size (use fraction of screen geometry, so it is independent of screen resolution).
