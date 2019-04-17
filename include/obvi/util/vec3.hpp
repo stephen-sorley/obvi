@@ -76,9 +76,9 @@ struct vec3
     // Negation
     vec3 operator-() const {
         vec3 ret;
-        ret.p[0] = -pt[0];
-        ret.p[1] = -pt[1];
-        ret.p[2] = -pt[2];
+        ret.pt[0] = -pt[0];
+        ret.pt[1] = -pt[1];
+        ret.pt[2] = -pt[2];
         return ret;
     }
 

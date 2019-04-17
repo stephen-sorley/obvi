@@ -77,6 +77,11 @@ TEMPLATE_TEST_CASE("vec3 math", "[vec3]", float, double) {
     vec3<TestType> w(4,5,6);
     TestType       s = 2.5;
 
+    SECTION( "negate" ) {
+        w = -v;
+        VEC3_EQUAL(w, -1.0_a, -2.0_a, -3.0_a);
+    }
+
     SECTION( "add" ) {
         SECTION( "vector in-place" ) {
             v += w;
