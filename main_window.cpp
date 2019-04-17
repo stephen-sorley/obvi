@@ -26,25 +26,21 @@
  */
 #include "main_window.hpp"
 
+#include <QKeyEvent>
 #include <QDebug>
+
+#include <obvi/util/bbox.hpp>
 
 // TODO: read data from disk instead of relying on hardcoded vertex data below.
 namespace {
     static constexpr GLfloat vertex_data[] = {
     //        Position           Color
-         0.00f, 0.75f,1.0f,  1.0f,0.0f,0.0f,  //vertex 0
-        -0.75f,-0.75f,1.0f,  0.0f,0.0f,1.0f,  //vertex 1
-         0.75f,-0.75f,1.0f,  0.0f,1.0f,0.0f,  //vertex 2
+         0.00f, 0.75f,0.0f,  1.0f,0.0f,0.0f,  //vertex 0
+        -0.75f,-0.75f,0.0f,  0.0f,0.0f,1.0f,  //vertex 1
+         0.75f,-0.75f,0.0f,  0.0f,1.0f,0.0f,  //vertex 2
     };
 
     static constexpr size_t num_vertices = sizeof(vertex_data) / (6 * sizeof(vertex_data[0]));
-
-    static constexpr GLfloat mat4_identity[] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-    };
 }
 
 obvi::main_window::~main_window() {
@@ -59,7 +55,20 @@ obvi::main_window::~main_window() {
 // OpenGL rendering callbacks.
 void obvi::main_window::initializeGL() {
     initializeOpenGLFunctions(); // from parent QOpenGLFunctions
+    connect(this, SIGNAL(frameSwapped()), this, SLOT(update())); // continuously redraw (sync'd to refresh rate if Vsync enabled)
     print_context_info(); // for debugging purposes only
+
+    // Point camera at center of object.
+    {
+        obvi::bboxf box;
+        for(size_t i = 0; i < num_vertices; ++i) {
+            const float *vtx = vertex_data + i * 6;
+            box.expand(vec3f(vtx[0],vtx[1],vtx[2]));
+        }
+        vec3f center = box.center();
+        vec3f camera_pos = center - vec3f(0,0,3);
+        camera.look_at(camera_pos, center, vec3f(0,1,0));
+    }
 
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -71,13 +80,15 @@ void obvi::main_window::initializeGL() {
         program.addCacheableShaderFromSourceFile(QOpenGLShader::Fragment, ":/flat.frag");
         program.link();
         program.bind();
-        int loc_position   = program.attributeLocation("position");
-        int loc_color      = program.attributeLocation("color");
-        int loc_modelview  = program.uniformLocation("mv");
-        int loc_projection = program.uniformLocation("mvp");
-        int loc_light_dir  = program.uniformLocation("light_dir");
-        int loc_diff_frac  = program.uniformLocation("diff_frac");
-        int loc_ambi_frac  = program.uniformLocation("ambi_frac");
+        int loc_position     = program.attributeLocation("position");
+        int loc_color        = program.attributeLocation("color");
+
+        loc_model            = program.uniformLocation("model");
+        loc_view_proj        = program.uniformLocation("view_proj");
+        loc_light_dir_world  = program.uniformLocation("light_dir_world");
+        loc_camera_pos_world = program.uniformLocation("camera_pos_world");
+        int loc_diff_frac    = program.uniformLocation("diff_frac");
+        int loc_ambi_frac    = program.uniformLocation("ambi_frac");
 
         // Create buffer to store vertex data in, and fill it with hardcoded values.
         v_buffer.create();
@@ -94,10 +105,6 @@ void obvi::main_window::initializeGL() {
         program.setAttributeBuffer(loc_position, GL_FLOAT, 0, 3, sizeof(float)*6);
         program.setAttributeBuffer(loc_color, GL_FLOAT, sizeof(float)*3, 3, sizeof(float)*6);
 
-        program.setUniformValue(loc_modelview, QMatrix4x4(mat4_identity).transposed());
-        program.setUniformValue(loc_projection, QMatrix4x4(mat4_identity).transposed());
-
-        program.setUniformValue(loc_light_dir, 0.0f, 0.0f, 1.0f); //light coming straight from camera
         program.setUniformValue(loc_diff_frac, 0.7f);
         program.setUniformValue(loc_ambi_frac, 0.3f);
 
@@ -106,24 +113,54 @@ void obvi::main_window::initializeGL() {
         v_buffer.release();
         program.release();
     }
+
+    model_moved  = true;
+    camera_moved = true;
+    lens_changed = true;
 }
 
 void obvi::main_window::resizeGL(int width, int height) {
-    (void)width; (void)height; //TODO: implement this function
+    (void)width; (void)height;
+    lens_changed = true;
 }
 
 void obvi::main_window::paintGL() {
     // Clear previous contents of buffer by setting every pixel to the clear color.
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Draw.
-    program.bind();
+    bind_state();
     {
-        v_obj.bind();
+        // Send new model, view and projection matrices to GPU, if any have changed.
+        update_model();
+        update_camera();
+
+        // Draw the mesh.
         glDrawArrays(GL_TRIANGLES, 0, num_vertices);
-        v_obj.release();
     }
-    program.release();
+    release_state();
+
+    glFinish(); // Minimizes screen tearing when window is resized.
+}
+
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// Event handling.
+void obvi::main_window::keyPressEvent(QKeyEvent *ev) {
+    if(!ev) {
+        return;
+    }
+    switch(ev->key()) {
+        // Toggle animation on/off.
+        case Qt::Key_A:
+        if(!animate) {
+            animate = true;
+            tstart = std::chrono::steady_clock::now();
+            update();
+        } else {
+            animate = false;
+        }
+        break;
+    }
 }
 
 
@@ -145,4 +182,55 @@ void obvi::main_window::print_context_info() {
 
     // Print out as debug info.
     qDebug() << glType << glVersion << glProfile;
+}
+
+void obvi::main_window::bind_state() {
+    program.bind();
+    v_obj.bind();
+}
+
+void obvi::main_window::release_state() {
+    v_obj.release();
+    program.release();
+}
+
+void obvi::main_window::update_model() {
+    if(animate) {
+        static constexpr float two_pi      = 2.0f * obvi::pi<float>;
+        static constexpr float rot_per_sec = 0.5f;
+        auto tend = std::chrono::steady_clock::now();
+        std::chrono::duration<float> fsec = tend - tstart;
+
+        model.set(model.rotation() * mat3f::yrot(two_pi * rot_per_sec * fsec.count()),
+            model.translation());
+        tstart = tend;
+        model_moved = true;
+    }
+    if(model_moved) {
+        std::array<float, 16> mat_model;
+        model.to_gl(mat_model);
+        program.setUniformValue(loc_model, QMatrix4x4(mat_model.data()).transposed());
+    }
+    model_moved = false;
+}
+
+void obvi::main_window::update_camera() {
+    if(lens_changed) {
+        camera.set_perspective(deg2rad(45.0f), float(width()) / float(height()), 1.0f, 1e5f);
+    }
+    if(camera_moved) {
+        // Update camera position.
+        const vec3f& camera_pos = camera.get_position();
+        program.setUniformValue(loc_camera_pos_world, camera_pos[0], camera_pos[1], camera_pos[2]);
+        // Update light direction (light pointed in same direction as camera).
+        vec3f look_dir = camera.get_look_dir();
+        program.setUniformValue(loc_light_dir_world, look_dir[0], look_dir[1], look_dir[2]);
+    }
+    if(lens_changed || camera_moved) {
+        std::array<float, 16> mat_view_proj;
+        camera.to_gl(mat_view_proj);
+        program.setUniformValue(loc_view_proj, QMatrix4x4(mat_view_proj.data()).transposed());
+    }
+    lens_changed = false;
+    camera_moved = false;
 }

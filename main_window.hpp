@@ -35,6 +35,11 @@
 #include <QOpenGLVertexArrayObject>
 #include <QOpenGLShaderProgram>
 
+#include <chrono>
+
+#include <obvi/util/affine3.hpp>
+#include <obvi/util/camera3.hpp>
+
 namespace obvi {
 
 struct main_window : public QOpenGLWindow, protected QOpenGLFunctions {
@@ -49,13 +54,36 @@ public:
     void paintGL();
 
 private:
+    // Event handling.
+    void keyPressEvent(QKeyEvent *ev);
+
     // Helper functions.
     void print_context_info();
+
+    void bind_state();
+    void release_state();
+    void update_model();
+    void update_camera();
 
     // OpenGL object state.
     QOpenGLBuffer            v_buffer;
     QOpenGLVertexArrayObject v_obj;
     QOpenGLShaderProgram     program;
+    int                      loc_model;
+    int                      loc_view_proj;
+    int                      loc_light_dir_world;
+    int                      loc_camera_pos_world;
+
+    // Other object state.
+    obvi::affine3f model;
+    obvi::camera3f camera;
+    bool           model_moved  = false;
+    bool           lens_changed = false;
+    bool           camera_moved = false;
+
+    bool           animate      = false;
+
+    std::chrono::steady_clock::time_point tstart;
 };
 
 } // END namespace obvi
