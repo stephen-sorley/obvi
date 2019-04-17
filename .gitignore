@@ -2,4 +2,4 @@
 build*/
 
 # Skip files added by Qt Creator.
-CMakeLists.txt.user
+CMakeLists.txt.user*
