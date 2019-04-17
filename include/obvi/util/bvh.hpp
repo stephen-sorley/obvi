@@ -84,6 +84,10 @@ struct bvh {
         return num_leaves;
     }
 
+    const bboxf& bounds() const {
+        return (tree.size() > 0)? tree[0].box : bvh::empty_box;
+    }
+
     template<typename intersect_func> struct query; //defined at bottom of file
 
     // Make an intersection query.
@@ -145,6 +149,8 @@ struct bvh {
 private:
     std::vector<node> tree; // BVH tree, stored linearly in depth-first-traversal order
     size_t            num_leaves = 0;
+
+    const static bboxf empty_box;
 };
 
 
