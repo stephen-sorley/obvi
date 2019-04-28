@@ -44,6 +44,12 @@ set(CMAKE_LINK_DEPENDS_NO_SHARED TRUE)
 # when building shared libs).
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
+# Add link flags to set RPATH (on platforms that support it), so that installed components
+# can find their bundled libraries in the install package.
+#
+# Will look first in same directory as component, then "lib" child dir, then "lib" sibling dir.
+set(CMAKE_INSTALL_RPATH "\$ORIGIN/:\$ORIGIN/lib/:\$ORIGIN/../lib")
+
 # Use interprocedural optimization for release builds, if supported by toolchain.
 if(NOT ADD_FLAGS_DISABLE_IPO)
     include(CheckIPOSupported)
