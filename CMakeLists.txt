@@ -98,3 +98,55 @@ install_deps(lib bin
 )
 
 install_deps_system(lib bin)
+
+if(WIN32)
+    configure_file(LICENSE   LICENSE.txt NEWLINE_STYLE WIN32)
+    configure_file(README.md README.txt  NEWLINE_STYLE WIN32)
+    set(license_file "${CMAKE_CURRENT_BINARY_DIR}/LICENSE.txt")
+    set(readme_file  "${CMAKE_CURRENT_BINARY_DIR}/README.txt")
+else()
+    set(license_file "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+    set(readme_file  "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+endif()
+install(FILES "${license_file}" "${readme_file}"
+    DESTINATION .
+)
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Packaging rules.
+set(CPACK_GENERATOR ZIP) # Always generate a ZIP archive.
+
+if(WIN32)
+    # If targeting windows, also use WiX to create an MSI, if available.
+    if(EXISTS "$ENV{WIX}" OR EXISTS "${CPACK_WIX_ROOT}")
+        set(def TRUE)
+    else()
+        set(def FALSE)
+    endif()
+    option(OBVI_PKG_WIX "Use WiX Toolset to create installer?" ${def})
+
+    if(OBVI_PKG_WIX)
+        list(APPEND CPACK_GENERATOR WIX)
+
+        set(CPACK_WIX_UPGRADE_GUID          A76A99AE-47AC-49D8-BB0A-D53DD991B6DB)
+        set(CPACK_WIX_PROPERTY_ARPHELPLINK  https://github.com/stephen-sorley/obvi/)
+
+        # Don't include version number in default installation directory.
+        set(CPACK_PACKAGE_INSTALL_DIRECTORY "${PROJECT_NAME}")
+    endif()
+else()
+    # If targeting *nix, also create a self-extracting gzipped tar file.
+    list(APPEND CPACK_GENERATOR STGZ)
+endif()
+
+set(CPACK_VERBATIM_VARIABLES TRUE)
+
+set(CPACK_PACKAGE_VENDOR              "Stephen Sorley")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Obvi (Object Visualizer)")
+set(CPACK_PACKAGE_VERSION             ${PROJECT_VERSION})
+set(CPACK_RESOURCE_FILE_README        "${readme_file}")
+set(CPACK_RESOURCE_FILE_LICENSE       "${license_file}")
+
+
+include(CPack)
