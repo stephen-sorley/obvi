@@ -2,11 +2,26 @@
 #
 # Helper functions for installing library dependencies (and copying to the build dir on Windows).
 #
-# Accepts a list of paths and/or import targets. Import targets that are static libs or executables
-# are silently ignored.
+# Accepts a list of paths and/or targets. Targets that are static libs or executables are silently
+# ignored. Alias targets and import targets are handled naturally, and any interface link
+# dependencies of interface targets are followed recursively and added as well.
 #
 # The "lib dest" and "runtime dest" parameters given to install_deps are allowed to contain
 # generator expressions.
+#
+# On Windows, if given a path to an import library (.lib), this function will attempt to guess the
+# path to the DLL file. If at all possible, please define import libraries as SHARED explicitly
+# and provide dll path in LOCATION and import lib path in IMPORTED_IMPLIB, so that this guessing
+# isn't necessary.
+#
+# On *nix, all symlinks are resolved before installing the file, so the name of the installed file
+# will be the name of the physical file at the end of the symlink chain. If the file is an ELF
+# shared library and SONAME is defined, a symlink will also be installed that points to the physical
+# file and has the name stored in SONAME.
+#
+# For example, let's say "libz.so" is passed in, it's a symlink to "libz.so.1.2.11", and the SONAME
+# stored in the ELF header is "libz.so.1". This function will install a file named "libz.so.1.2.11",
+# and a symlink that points to that file named "libz.so.1".
 #
 # This file was adapted from the mstdlib project (MIT licensed), found here:
 #   https://github.com/Monetra/mstdlib/blob/master/CMakeModules/InstallDepLibs.cmake
@@ -28,7 +43,6 @@
 #
 #     Just like with install_deps, this will also copy any DLL's to the build directory when on
 #     Windows. This behavior can be disabled by setting INSTALL_DEPS_COPY_DLL to FALSE.
-#
 #
 # Extra variables that modify how the functions work:
 # INSTALL_DEPS_COPY_DLL
@@ -197,21 +211,23 @@ endfunction()
 # ARGN == list of qt import libs provided to application.
 function(_install_deps_get_qt_extra_paths lib_dest runtime_dest component out_paths_name)
     set(qt_import_libs ${ARGN})
-    if(NOT qt_import_libs)
+    if((NOT qt_import_libs) OR NOT TARGET Qt5::Core)
         return()
     endif()
 
+    # Get root dir of Qt5 installation.
+    #   Find absolute path to core library.
+    get_target_property(qt5_root Qt5::Core LOCATION)
+    #   Remove library file from path.
+    get_filename_component(qt5_root "${qt5_root}" DIRECTORY)
+    #   Remove last directory ("lib") from path.
+    get_filename_component(qt5_root "${qt5_root}" DIRECTORY)
+
+    # For each Qt lib we support, install any required plugins directly, and add any required
+    # libraries to "to_add" (will get appended onto out_paths at bottom of function).
     set(to_add)
 
     if("Qt5::Core" IN_LIST qt_import_libs)
-        # Get root dir of Qt5 installation.
-        #   Find absolute path to core library.
-        get_target_property(qt5_root Qt5::Core LOCATION)
-        #   Remove library file from path.
-        get_filename_component(qt5_root "${qt5_root}" DIRECTORY)
-        #   Remove last directory ("lib") from path.
-        get_filename_component(qt5_root "${qt5_root}" DIRECTORY)
-
         # Install platform plugin. Don't add to out_paths, this has to go in a special subdir,
         # and it's guaranteed not to need symlinks.
         set(plugin)
@@ -251,7 +267,26 @@ function(_install_deps_get_qt_extra_paths lib_dest runtime_dest component out_pa
         endif()
     endif()
 
-    # Add prefix to each lib name we want to add.
+    if("Qt5::PrintSupport" IN_LIST qt_import_libs)
+        set(plugin)
+        if(WIN32)
+            set(plugin "windowsprintersupport.dll")
+        elseif(NOT APPLE) # Linux/X11
+            set(plugin "libcupsprintersupport.so")
+        endif()
+
+        if(plugin)
+            set(plugin "${qt5_root}/plugins/printsupport/${plugin}")
+            if(EXISTS "${plugin}")
+                install(FILES "${plugin}"
+                    DESTINATION "${runtime_dest}/printsupport"
+                    ${component}
+                )
+            endif()
+        endif()
+    endif()
+
+    # Add prefix to each lib name we want to add, then append to out_paths.
     list(TRANSFORM to_add PREPEND "${qt5_root}/lib/")
     foreach(lib IN LISTS to_add)
         if(EXISTS ${lib})
@@ -349,7 +384,7 @@ function(_install_deps_internal lib_dest runtime_dest component do_copy do_insta
     )
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    # Process each library path, install to appropriate location.
+    # Process each library path, install to appropriate location (if not already installed).
     set(sonames)
     foreach(path IN LISTS lib_paths)
         # If this is an empty list element, skip it.
