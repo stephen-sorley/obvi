@@ -69,36 +69,31 @@ function(_install_deps_get_dll_from_implib out_dll path)
     get_filename_component(imp_dir "${path}" DIRECTORY)
     string(REGEX REPLACE "/[/0-9x_-]*lib[/0-9x_-]*(/.*|$)" "" root_dir "${imp_dir}")
 
-    set(libname)
-    set(nolibname)
+    # Get library name by removing .lib or .dll.a from extension.
+    get_filename_component(imp_file "${path}" NAME)
+    string(REGEX REPLACE "\.lib$" "" libname "${imp_file}")
+    string(REGEX REPLACE "\.dll\.a$" "" libname "${libname}")
+
+    # Get alternate library names by removing lib prefix, and/or d, MT, MDd, etc.
+    # (These are common suffixes that indicate which visual studio build flags were used).
+    string(REGEX REPLACE "^lib" "" nolibname "${libname}")
+
     set(alt_names)
+    string(REGEX REPLACE "M[dDtT]+$" "" alt_name "${libname}")
+    list(APPEND alt_names ${alt_name})
+    string(REGEX REPLACE "M[dDtT]+$" "" alt_name "${nolibname}")
+    list(APPEND alt_names ${alt_name})
+    string(REGEX REPLACE "[dD]$" "" alt_name "${libname}")
+    list(APPEND alt_names ${alt_name})
+    string(REGEX REPLACE "[dD]$" "" alt_name "${nolibname}")
+    list(APPEND alt_names ${alt_name})
 
     string(TOLOWER "${libname}" libname_lower)
     string(TOUPPER "${libname}" libname_upper)
 
-    if(NOT libname)
-        # Get library name by removing .lib or .dll.a from extension.
-        get_filename_component(imp_file "${path}" NAME)
-        string(REGEX REPLACE "\.lib$" "" libname "${imp_file}")
-        string(REGEX REPLACE "\.dll\.a$" "" libname "${libname}")
+    string(MAKE_C_IDENTIFIER "${libname_upper}" clibname)
 
-        # Get alternate library names by removing lib prefix, and/or d, MT, MDd, etc.
-        # (These are common suffixes that indicate which visual studio build flags were used).
-        string(REGEX REPLACE "^lib" "" nolibname "${libname}")
-
-        string(REGEX REPLACE "M[dDtT]+$" "" alt_name "${libname}")
-        list(APPEND alt_names ${alt_name})
-        string(REGEX REPLACE "M[dDtT]+$" "" alt_name "${nolibname}")
-        list(APPEND alt_names ${alt_name})
-        string(REGEX REPLACE "[dD]$" "" alt_name "${libname}")
-        list(APPEND alt_names ${alt_name})
-        string(REGEX REPLACE "[dD]$" "" alt_name "${nolibname}")
-        list(APPEND alt_names ${alt_name})
-    endif()
-
-    string(MAKE_C_IDENTIFIER "${libname}" clibname)
-
-    # Figure out possible arch names, based on bitness of project.
+    # Make list of possible subdirectory names that might contain DLL's.
     set(suffixes)
     if(CMAKE_SIZEOF_VOID_P EQUAL 8)
         list(APPEND suffixes
@@ -113,6 +108,7 @@ function(_install_deps_get_dll_from_implib out_dll path)
     endif()
     list(APPEND suffixes bin lib)
 
+    # Ask CMake to search for the DLL.
     set(CMAKE_FIND_LIBRARY_SUFFIXES .dll)
     find_library(${clibname}_DLL
         NAMES           ${libname} ${libname_lower} ${libname_upper} ${nolibname} ${alt_names}
@@ -122,15 +118,19 @@ function(_install_deps_get_dll_from_implib out_dll path)
         PATH_SUFFIXES   ${suffixes}
     )
 
+    # If found, set result in parent scope. Otherwise, send a fatal error message with instructions
+    # on how to manually specify the DLL location.
     if(${clibname}_DLL)
         set(${out_dll} "${${clibname}_DLL}" PARENT_SCOPE)
     else()
-        message(FATAL_ERROR "install_dep_libs() couldn't find DLL for given import lib \"${path}\" (set path with -D${clibname}_DLL=...)")
+        message(FATAL_ERROR
+        "install_dep_libs() couldn't find DLL for given import lib \"${path}\" (set manually with -D${clibname}_DLL=...)"
+        )
     endif()
 endfunction()
 
 
-# Helper function for _install_deps_internal: convert given list of libs into paths.
+# Helper function for _install_deps_internal: convert given list of libs into file paths.
 function(_install_deps_get_paths_from_libs lib_dest runtime_dest component out_paths_name out_libs_name)
     set(out_libs)
     foreach(lib IN LISTS ${out_libs_name})
@@ -148,7 +148,8 @@ function(_install_deps_get_paths_from_libs lib_dest runtime_dest component out_p
                 continue()
             endif()
 
-            # If this target isn't a shared, module or interface library target, skip it silently without doing anything.
+            # If this target isn't a shared, module, interface, or unknown imported library target, skip it silently
+            # without doing anything.
             get_target_property(type ${lib} TYPE)
             if(NOT type STREQUAL "SHARED_LIBRARY" AND
                NOT type STREQUAL "MODULE_LIBRARY" AND
@@ -180,7 +181,8 @@ function(_install_deps_get_paths_from_libs lib_dest runtime_dest component out_p
                 continue()
             endif()
 
-            # For shared/module imported libs, get the imported location (should be DLL, on Windows). Add to list of paths.
+            # For shared/module/unknown imported libs, get the imported location (should be DLL, on Windows).
+            # Add to list of paths.
             get_target_property(lib_path ${lib} LOCATION)
             if(WIN32 AND NOT lib_path)
                 # If there's no known DLL, use the import lib as the path instead.
@@ -205,13 +207,12 @@ endfunction()
 
 
 # Helper function for _install_deps_internal: if we're installing Qt runtime libraries, add extra
-# Qt libs and plugins that are required for Qt to run properly, but aren't explicitly listed as
-# dependencies in the imported library targets.
+# libraries and plugins that those runtime libraries depend on.
 #
-# ARGN == list of qt import libs provided to application.
+# ARGN == list of qt import libs that the caller explicitly requested that we install.
 function(_install_deps_get_qt_extra_paths lib_dest runtime_dest component out_paths_name)
     set(qt_import_libs ${ARGN})
-    if((NOT qt_import_libs) OR NOT TARGET Qt5::Core)
+    if((NOT qt_import_libs) OR (NOT TARGET Qt5::Core))
         return()
     endif()
 

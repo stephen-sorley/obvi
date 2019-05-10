@@ -130,10 +130,7 @@ if(WIN32)
         list(APPEND CPACK_GENERATOR WIX)
 
         set(CPACK_WIX_UPGRADE_GUID          A76A99AE-47AC-49D8-BB0A-D53DD991B6DB)
-        set(CPACK_WIX_PROPERTY_ARPHELPLINK  https://github.com/stephen-sorley/obvi/)
-
-        # Don't include version number in default installation directory.
-        set(CPACK_PACKAGE_INSTALL_DIRECTORY "${PROJECT_NAME}")
+        set(CPACK_WIX_PROPERTY_ARPHELPLINK  https://github.com/stephen-sorley/obvi/)        
     endif()
 else()
     # If targeting *nix, also create a self-extracting gzipped tar file.
@@ -142,11 +139,13 @@ endif()
 
 set(CPACK_VERBATIM_VARIABLES TRUE)
 
+# Don't include version number in default installation directory.
+set(CPACK_PACKAGE_INSTALL_DIRECTORY   "${PROJECT_NAME}")
+
 set(CPACK_PACKAGE_VENDOR              "Stephen Sorley")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Obvi (Object Visualizer)")
 set(CPACK_PACKAGE_VERSION             ${PROJECT_VERSION})
 set(CPACK_RESOURCE_FILE_README        "${readme_file}")
 set(CPACK_RESOURCE_FILE_LICENSE       "${license_file}")
-
 
 include(CPack)
