@@ -40,6 +40,12 @@ include("${CMAKE_CURRENT_LIST_DIR}/AddFlagsHelpers.cmake")
 # Don't relink executables when shared libraries they depend on change - it's not necessary.
 set(CMAKE_LINK_DEPENDS_NO_SHARED TRUE)
 
+# Hide symbols by default on all platforms (not just on Windows), instead of exposing everything.
+foreach(lang C CXX Fortran)
+    set(CMAKE_${lang}_VISIBILITY_PRESET hidden)
+endforeach()
+set(CMAKE_VISIBILITY_INLINES_HIDDEN TRUE)
+
 # Always compile everything as PIE/PIC (for security, and so that static libs can be used as inputs
 # when building shared libs).
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
@@ -81,10 +87,6 @@ if(MSVC)
 else()
     # GCC, Clang, Intel, etc.
     _int_add_flags_compiler(LANGS C CXX FLAGS
-        # Hide symbols by default (like on Windows), instead of exposing everything.
-        -fvisibility=hidden
-        -fvisibility-inlines-hidden
-
         # Warning flags.
         -Wall
         -Wextra
