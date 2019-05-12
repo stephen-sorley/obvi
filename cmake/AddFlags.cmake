@@ -31,7 +31,7 @@
 # THE SOFTWARE.
 # # # # # # # # # # # #
 #
-cmake_minimum_required(VERSION 3.13...3.14)
+cmake_minimum_required(VERSION 3.14)
 
 include_guard(DIRECTORY)
 
@@ -49,6 +49,9 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN TRUE)
 # Always compile everything as PIE/PIC (for security, and so that static libs can be used as inputs
 # when building shared libs).
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+# Must call check_pie_supported in order for any extra required linker flags to be added to PIE executables.
+include(CheckPIESupported)
+check_pie_supported()
 
 # Add link flags to set RPATH (on platforms that support it), so that installed components
 # can find their bundled libraries in the install package.
@@ -127,25 +130,6 @@ else()
         _int_add_flags_compiler(LANGS C CXX FLAGS
             -Wno-unused-parameter
         )
-    endif()
-
-    # Versions of CMake before 3.14 have a bug where it doesn't add "-pie" to executable link lines
-    # when you enable position independent code (only adds "-fPIE", which isn't enough for the GNU
-    # linker).
-    #
-    # See: https://gitlab.kitware.com/cmake/cmake/issues/14983
-    # TODO: remove this once minimum supported CMake version is >= 3.14.
-    if(CMAKE_VERSION VERSION_LESS 3.14)
-        if(UNIX AND NOT (APPLE OR ANDROID))
-            _int_add_flags_linker(CONFIGS EXE FLAGS
-                -pie
-            )
-        endif()
-    else()
-        # For CMake >=3.14, must call check_pie_supported in order for any extra required linker
-        # flags to be added to PIE executables.
-        include(CheckPIESupported)
-        check_pie_supported()
     endif()
 
     # Set additional hardening flags, if requested.

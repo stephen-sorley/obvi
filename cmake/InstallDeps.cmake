@@ -49,7 +49,7 @@
 #   If TRUE (the default), any DLL's installed with install_deps will also be copied to the build
 #   directory (specifically, to CMAKE_RUNTIME_OUTPUT_DIR). Set to FALSE to disable DLL copies.
 #
-cmake_minimum_required(VERSION 3.13...3.14)
+cmake_minimum_required(VERSION 3.14)
 
 include_guard(DIRECTORY)
 
