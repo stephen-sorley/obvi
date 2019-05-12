@@ -43,7 +43,7 @@ get_filename_component(srcdir "${CMAKE_SOURCE_DIR}" REALPATH)
 get_filename_component(bindir "${CMAKE_BINARY_DIR}" REALPATH)
 if(srcdir STREQUAL bindir)
     message(FATAL_ERROR "\
-
+\n\
 Don't run CMake in the source directory - please create a new build directory, and invoke cmake from there. \
 To clean up after this build attempt, please run the following in your source directory:\
 \n\
