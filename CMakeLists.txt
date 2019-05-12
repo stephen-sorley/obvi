@@ -38,8 +38,6 @@ include(InstallDeps)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set up compiler and linker options.
-set(ADD_FLAGS_STRICT_WARNINGS TRUE) # Enable verbose warnings.
-set(ADD_FLAGS_HARDEN          TRUE) # Add security-hardening flags.
 include(AddFlags)
 
 # Require C++14, and disable compiler-specific extensions (if possible).
@@ -50,14 +48,24 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Find third-party dependencies.
+# -- Find Qt 5
 set(qt_libs
     Gui
     Core
 )
+
 include(AddQtPath)
 find_package(Qt5 REQUIRED COMPONENTS ${qt_libs})
+
+# Hide most of the Qt5 cache variables in cmake-gui.
+foreach(lib ${qt_libs})
+    mark_as_advanced(FORCE "Qt5${lib}_DIR")
+endforeach()
+
+# Get list of import libs to link against (e.g., Qt5::Core).
 list(TRANSFORM qt_libs PREPEND "Qt5::")
 
+# -- Find OpenMP
 find_package(OpenMP QUIET COMPONENTS CXX)
 
 
@@ -124,9 +132,9 @@ if(WIN32)
     else()
         set(def FALSE)
     endif()
-    option(OBVI_PKG_WIX "Use WiX Toolset to create installer?" ${def})
+    option(PKG_WIX "Use WiX Toolset to create installer?" ${def})
 
-    if(OBVI_PKG_WIX)
+    if(PKG_WIX)
         list(APPEND CPACK_GENERATOR WIX)
 
         set(CPACK_WIX_UPGRADE_GUID          A76A99AE-47AC-49D8-BB0A-D53DD991B6DB)

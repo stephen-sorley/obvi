@@ -3,9 +3,9 @@
 # Adds project-wide compiler and linker flags.
 #
 # Options:
-#   ADD_FLAGS_STRICT_WARNINGS: display type conversion and other verbose warnings (defaults to FALSE)
-#   ADD_FLAGS_HARDEN: add flags to security harden the code (defaults to FALSE)
-#   ADD_FLAGS_DISABLE_IPO: don't use interprocedural optimization on release builds (defaults to FALSE)
+#   ADDFLAGS_STRICT_WARNINGS: display type conversion and other verbose warnings (defaults to FALSE)
+#   ADDFLAGS_HARDEN: add flags to security harden the code (defaults to TRUE)
+#   ADDFLAGS_IPO: add flags to enable interprocedural optimization on release builds (defaults to FALSE)
 #
 # # # # # # # # # # # #
 # The MIT License (MIT)
@@ -37,6 +37,22 @@ include_guard(DIRECTORY)
 
 include("${CMAKE_CURRENT_LIST_DIR}/AddFlagsHelpers.cmake")
 
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# User-configurable options:
+
+option(ADDFLAGS_STRICT_WARNINGS "Display type conversion and other verbose warnings?"        TRUE)
+option(ADDFLAGS_HARDEN          "Security harden the code (stack protector, etc)?"           TRUE)
+option(ADDFLAGS_IPO             "Enable interprocedural optimization (release builds only)?" FALSE)
+
+mark_as_advanced(FORCE
+    ADDFLAGS_HARDEN #Hide by default, only allow advanced users to disable security hardening.
+)
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Add flags through platform-agnostic CMake interface:
+
 # Don't relink executables when shared libraries they depend on change - it's not necessary.
 set(CMAKE_LINK_DEPENDS_NO_SHARED TRUE)
 
@@ -60,13 +76,17 @@ check_pie_supported()
 set(CMAKE_INSTALL_RPATH "\$ORIGIN/:\$ORIGIN/lib/:\$ORIGIN/../lib")
 
 # Use interprocedural optimization for release builds, if supported by toolchain.
-if(NOT ADD_FLAGS_DISABLE_IPO)
+if(ADDFLAGS_IPO)
     include(CheckIPOSupported)
     check_ipo_supported(RESULT res OUTPUT out)
     if(res)
         set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
     endif()
 endif()
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Add platform-specific flags:
 
 if(MSVC)
     # Visual Studio
@@ -76,7 +96,7 @@ if(MSVC)
     )
 
     # If we're not building in strict mode, remove some warnings to reduce noise level.
-    if(NOT ADD_FLAGS_STRICT_WARNINGS)
+    if(NOT ADDFLAGS_STRICT_WARNINGS)
         _int_add_flags_compiler(LANGS C CXX FLAGS
             /wd4018 # Disable signed/unsigned mismatch warnings
             /wd4068 # Disable unknown pragma warnings
@@ -120,7 +140,7 @@ else()
         -Werror=implicit-function-declaration
     )
 
-    if(ADD_FLAGS_STRICT_WARNINGS)
+    if(ADDFLAGS_STRICT_WARNINGS)
         _int_add_flags_compiler(LANGS C CXX FLAGS
             -Wconversion
             -Wdouble-promotion
@@ -133,7 +153,7 @@ else()
     endif()
 
     # Set additional hardening flags, if requested.
-    if(ADD_FLAGS_HARDEN)
+    if(ADDFLAGS_HARDEN)
         _int_add_flag_options_compiler(LANGS C CXX FLAG_OPTIONS
             -fstack-protector-strong                      # Preferred, but only supported on GCC 4.9 or newer.
             "-fstack-protector --param=ssp-buffer-size=4" # Fall back to older flag if strong protector isn't supported.
