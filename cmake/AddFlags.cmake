@@ -3,7 +3,7 @@
 # Adds project-wide compiler and linker flags.
 #
 # Options:
-#   ADDFLAGS_STRICT_WARNINGS: display type conversion and other verbose warnings (defaults to FALSE)
+#   ADDFLAGS_STRICT_WARNINGS: display type conversion and other verbose warnings (defaults to TRUE)
 #   ADDFLAGS_HARDEN: add flags to security harden the code (defaults to TRUE)
 #   ADDFLAGS_IPO: add flags to enable interprocedural optimization on release builds (defaults to FALSE)
 #
