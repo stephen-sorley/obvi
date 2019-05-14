@@ -30,7 +30,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(ProjectSetup)
 
 project(Obvi
-    VERSION   1.0
+    VERSION   0.1
     LANGUAGES CXX
 )
 
