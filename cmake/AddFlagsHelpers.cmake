@@ -5,6 +5,9 @@
 #   _int_add_flags_compiler
 #   _int_add_flag_options_compiler
 #
+# There are a few other functions in here that are used as helpers by the above
+# three, and aren't really intended to be called by the user.
+#
 # # # # # # # # # # # #
 # The MIT License (MIT)
 #
@@ -107,6 +110,63 @@ function(_int_add_flags_linker)
 endfunction()
 
 
+# Copy changes to CMAKE_*_FLAGS* variables back up to parent.
+# (Helper for _int_append_compile_flag, _int_add_flags_compiler, _int_add_flag_options_compiler)
+# ARG0: name of variable holding list of languages
+# ARG1: name of variable holding list of configs
+macro(_int_return_compile_flags)
+    # Push any changes to compiler flags variables up to caller's scope.
+    foreach(lang ${${ARGV0}})
+        set(dest_name CMAKE_${lang}_FLAGS)
+        foreach(config ${${ARGV1}})
+            set(suffix)
+            if(NOT config STREQUAL "NONE")
+                set(suffix "_${config}")
+            endif()
+            set(${dest_name}${suffix} "${${dest_name}${suffix}}" PARENT_SCOPE)
+            if(lang STREQUAL CXX)
+                set(CMAKE_CUDA_FLAGS${suffix} "${CMAKE_CUDA_FLAGS${suffix}}" PARENT_SCOPE)
+            endif()
+        endforeach()
+    endforeach()
+endmacro()
+
+
+# Append the given flag to the flags variables for the given language and configurations.
+# (Helper for _int_add_flags_compiler, _int_add_flag_options_compiler)
+# ARGN: configs
+function(_int_append_compile_flag lang flag)
+    foreach(config ${ARGN})
+        set(dest_name CMAKE_${lang}_FLAGS)
+        if(NOT config STREQUAL "NONE")
+            string(APPEND dest_name "_${config}")
+            endif()
+            if(${dest_name})
+                # If destination var isn't empty, add a space before adding the new flag.
+                string(APPEND ${dest_name} " ")
+            endif()
+            string(APPEND ${dest_name} "${flag}")
+
+            # Special handling - if CUDA is enabled as a language, all C++ flags we add should also be
+            # passed through as host-compiler options to NVCC, so they get used when compiling C++ host
+            # code.
+            if(do_cuda AND lang STREQUAL "CXX")
+                set(dest_name CMAKE_CUDA_FLAGS)
+                if(NOT config STREQUAL "NONE")
+                    string(APPEND dest_name "_${config}")
+                endif()
+                if(${dest_name})
+                    # If destination var isn't empty, add a space before adding the new flag.
+                    string(APPEND ${dest_name} " ")
+                endif()
+                string(APPEND ${dest_name} "-Xcompiler=\"${flag}\"")
+            endif()
+    endforeach()
+
+    # Copy changes to CMAKE_*_FLAGS* variables back up to parent.
+    _int_return_compile_flags(lang ARGN)
+endfunction()
+
 
 # internal helper - adds given compile flags (if accepted by compiler) to given configurations of given languages.
 # _int_add_flags_compiler(FLAGS <compiler flags> [LANGS <languages>] [CONFIGS <build types>])
@@ -142,6 +202,12 @@ function(_int_add_flags_compiler)
         list(TRANSFORM ${configs_var} TOUPPER)
     endif()
 
+    if(CUDA IN_LIST enabled_languages)
+        set(do_cuda TRUE)
+    else()
+        set(do_cuda FALSE)
+    endif()
+
     foreach(lang ${arg_LANGS})
         foreach(flag ${arg_FLAGS})
             # Use flag in variable name to ensure uniqueness, normalize to a valid C identifier to
@@ -162,26 +228,12 @@ function(_int_add_flags_compiler)
 
             # If it does accept it, add it to the language-specific flag lists for every enabled configuration.
             if(${varlang})
-                foreach(config ${arg_CONFIGS})
-                    set(dest_name CMAKE_${lang}_FLAGS)
-                    if(NOT config STREQUAL "NONE")
-                        string(APPEND dest_name "_${config}")
-                    endif()
-                    if(${dest_name})
-                        # If destination var isn't empty, add a space before adding the new flag.
-                        string(APPEND ${dest_name} " ")
-                    endif()
-                    string(APPEND ${dest_name} "${flag}")
-                endforeach()
+                _int_append_compile_flag(${lang} ${flag} ${arg_CONFIGS})
             endif()
          endforeach()
     endforeach()
 
-    # Push any changes to compiler flags variables up to caller's scope.
-    foreach(lang ${arg_LANGS})
-        set(dest_name CMAKE_${lang}_FLAGS)
-        set(${dest_name} "${${dest_name}}" PARENT_SCOPE)
-    endforeach()
+    _int_return_compile_flags(arg_LANGS arg_CONFIGS)
 endfunction()
 
 
@@ -242,26 +294,12 @@ function(_int_add_flag_options_compiler)
 
             # If it does accept it, add it to the language-specific flag lists for every enabled configuration.
             if(${varlang})
-                foreach(config ${arg_CONFIGS})
-                    set(dest_name CMAKE_${lang}_FLAGS)
-                    if(NOT config STREQUAL "NONE")
-                        string(APPEND dest_name "_${config}")
-                    endif()
-                    if(${dest_name})
-                        # If destination var isn't empty, add a space before adding the new flag.
-                        string(APPEND ${dest_name} " ")
-                    endif()
-                    string(APPEND ${dest_name} "${flag}")
-                endforeach()
-
+                _int_append_compile_flag(${lang} ${flag} ${arg_CONFIGS})
                 break() # Once we hit a set of flags that works for this language, stop the loop.
             endif()
          endforeach()
     endforeach()
 
     # Push any changes to compiler flags variables up to caller's scope.
-    foreach(lang ${arg_LANGS})
-        set(dest_name CMAKE_${lang}_FLAGS)
-        set(${dest_name} "${${dest_name}}" PARENT_SCOPE)
-    endforeach()
+    _int_return_compile_flags(arg_LANGS arg_CONFIGS)
 endfunction()
