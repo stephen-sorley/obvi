@@ -237,7 +237,6 @@ function(_int_add_flags_compiler)
 endfunction()
 
 
-
 # internal helper - adds one of the given compile flags (if accepted by compiler) to given configurations
 #                   of given languages. Will only use the first flag in the list that's accepted by the compiler.
 #
