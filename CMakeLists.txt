@@ -34,6 +34,7 @@ project(Obvi
     LANGUAGES CXX
 )
 
+include(IDESetup)
 include(InstallDeps)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -138,7 +139,7 @@ if(WIN32)
         list(APPEND CPACK_GENERATOR WIX)
 
         set(CPACK_WIX_UPGRADE_GUID          A76A99AE-47AC-49D8-BB0A-D53DD991B6DB)
-        set(CPACK_WIX_PROPERTY_ARPHELPLINK  https://github.com/stephen-sorley/obvi/)        
+        set(CPACK_WIX_PROPERTY_ARPHELPLINK  https://github.com/stephen-sorley/obvi/)
     endif()
 else()
     # If targeting *nix, also create a self-extracting gzipped tar file.
