@@ -16,12 +16,12 @@
 #
 # On *nix, all symlinks are resolved before installing the file, so the name of the installed file
 # will be the name of the physical file at the end of the symlink chain. If the file is an ELF
-# shared library and SONAME is defined, a symlink will also be installed that points to the physical
+# shared library with SONAME defined, a symlink will also be installed that points to the physical
 # file and has the name stored in SONAME.
 #
 # For example, let's say "libz.so" is passed in, it's a symlink to "libz.so.1.2.11", and the SONAME
-# stored in the ELF header is "libz.so.1". This function will install a file named "libz.so.1.2.11",
-# and a symlink that points to that file named "libz.so.1".
+# stored in the ELF header is "libz.so.1". This function will install a file "libz.so.1.2.11", and
+# a symlink that points to that file named "libz.so.1".
 #
 # Functions:
 # install_deps([lib dest] [runtime dest] [... lib files or import targets ...])
@@ -30,9 +30,13 @@
 #     path or an imported library of type UNKNOWN, it will try to guess the path to the DLL. If it
 #     can't find the the DLL, it will throw an error.
 #
+#     If given imported targets, any dependencies of those libraries
+#
 #     By default, install_deps will also copy any DLL's to the build's runtime output directory
 #     (CMAKE_RUNTIME_OUTPUT_DIR, usually set to [build dir]/bin). This behavior can be turned off
 #     by setting INSTALL_DEPS_COPY_DLL to FALSE (see below).
+#
+#     With multiconfig generators like Visual Studio,
 #
 # install_deps_system([lib dest] [runtime dest])
 #     Installs any needed system dependencies (like Visual C++ runtime libraries). If OpenMP was
@@ -41,8 +45,9 @@
 #     Just like with install_deps, this will also copy any DLL's to the build directory when on
 #     Windows. This behavior can be disabled by setting INSTALL_DEPS_COPY_DLL to FALSE.
 #
-# Extra variables that modify how the functions work:
-# INSTALL_DEPS_COPY_DLL
+# Extra variables that modify how the functions work (can be set differently for each call to one
+# of these functions):
+# INSTALL_DEPS_COPY_DLL [{TRUE}|FALSE]
 #   If TRUE (the default), any DLL's installed with install_deps will also be copied to the build
 #   directory (specifically, to CMAKE_RUNTIME_OUTPUT_DIR). Set to FALSE to disable DLL copies.
 #
@@ -68,11 +73,22 @@
 #
 #   "LIMITED" is the default behavior.
 #
-# INSTALL_DEPS_EXCLUDE_LIST
+# INSTALL_DEPS_EXCLUDE_LIST <list of import targets to exclude from auto detection>
 #   Any libs in the exclusion list will be skipped if found during automatic dependency detection.
 #
+# INSTALL_DEPS_QT_INCLUDE_SOFTWARE_GL [TRUE|{FALSE}]
+#   If TRUE, deploy the software OpenGL rasterizer for dynamic OpenGL selection with Qt.
+#   Note that this is quite large (20 MB), and it's not necessary in most deployment scenarios.
+#   Default: FALSE
+#
+# INSTALL_DEPS_QT_INCLUDE_ANGLE_GL [{TRUE}|FALSE] **WINDOWS ONLY**
+#   If TRUE, deploy the ANGLE OpenGLES<->DirectX translation libraries for dynamic OpenGL selection
+#   with Qt. Note that if you're using desktop OpenGL (not the OpenGLES built into Qt), you should
+#   set this to FALSE to reduce the deployed size.
+#   Default: TRUE
+#
 # # # # # # # # # # # #
-# This file was originally adapted from the mstdlib project (also MIT licensed), found here:
+# This file was originally forked from the mstdlib project (also MIT licensed), found here:
 #   https://github.com/Monetra/mstdlib/blob/master/CMakeModules/InstallDepLibs.cmake
 #   (Monetra Technologies, LLC)
 #
@@ -105,15 +121,9 @@ cmake_minimum_required(VERSION 3.14)
 include_guard(DIRECTORY)
 
 
-# These libraries are always added to the exclusion list (won't ever be picked up by automatic
-# sub-dependency detection).
-list(APPEND INSTALL_DEPS_EXCLUDE_LIST
-    Qt5::Gui_GL
-    Qt5::Gui_EGL
-    Qt5::Gui_GLESv2
-)
 
-
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Find system tools
 
 # READELF
 # used to extract SONAME from shared libs on ELF platforms.
@@ -144,7 +154,11 @@ find_program(DUMPBIN
 mark_as_advanced(FORCE DUMPBIN)
 
 
-# Helper function for _install_deps_internal: try to find .dll using path of an import lib (VS or MinGW).
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Helper functions (private).
+
+# Helper function for _install_deps_internal: try to find .dll using path of an import lib.
 function(_install_deps_get_dll_from_implib out_dll path)
     # Get directory containing import lib, and try to guess root dir of install.
     get_filename_component(imp_dir "${path}" DIRECTORY)
@@ -213,9 +227,16 @@ function(_install_deps_get_dll_from_implib out_dll path)
     # Ask CMake to search for the DLL.
     set(CMAKE_FIND_LIBRARY_SUFFIXES .dll)
     find_library(${clibname}_DLL
-        NAMES           ${dumpbin_name} ${libname} ${libname_lower} ${libname_upper} ${nolibname} ${alt_names}
+        NAMES           ${dumpbin_name}
+                        ${libname}
+                        ${libname_lower}
+                        ${libname_upper}
+                        ${nolibname}
+                        ${alt_names}
+
         HINTS           "${imp_dir}"
                         "${root_dir}"
+
         NO_DEFAULT_PATH
         PATH_SUFFIXES   ${suffixes}
     )
@@ -226,9 +247,8 @@ function(_install_deps_get_dll_from_implib out_dll path)
     if(${clibname}_DLL)
         set(${out_dll} "${${clibname}_DLL}" PARENT_SCOPE)
     else()
-        message(FATAL_ERROR
-        "install_dep_libs() couldn't find DLL for given import lib \"${path}\" (set manually with -D${clibname}_DLL=...)"
-        )
+        set(msg install_dep_libs() couldn't find DLL for given import lib \"${path}\")
+        message(FATAL_ERROR "${msg} (set manually with -D${clibname}_DLL=...)")
     endif()
 endfunction()
 
@@ -246,10 +266,11 @@ function(_install_deps_take_libtag pathvar tagvar)
 endfunction()
 
 
-# Helper function: extract paths from the given import lib, add to given variable. Handle any libtag paths, too.
+# Helper function: extract paths from the given import lib, add to given variable. Handle any
+#                  libtag paths, too.
 function(_install_deps_append_paths_from_imported out_paths_name lib libtag is_multiconfig)
-    # For shared/module/unknown imported libs, get the imported location (should be DLL, on Windows).
-    # Add to list of paths.
+    # For shared/module/unknown imported libs, get the imported location (should be DLL,
+    # on Windows). Add to list of paths.
     get_target_property(lib_path_debug ${lib} LOCATION_DEBUG)
     get_target_property(lib_path_any ${lib} LOCATION)
     if(WIN32)
@@ -262,7 +283,8 @@ function(_install_deps_append_paths_from_imported out_paths_name lib libtag is_m
         endif()
     endif()
 
-    # If the debug path points to the exact same library as the non-debug one, don't consider it separately.
+    # If the debug path points to the exact same library as the non-debug one, don't consider it
+    # separately.
     if(lib_path_any AND lib_path_debug AND (lib_path_debug STREQUAL lib_path_any))
         set(lib_path_debug)
     endif()
@@ -288,7 +310,9 @@ function(_install_deps_append_paths_from_imported out_paths_name lib libtag is_m
             continue()
         endif()
         if(NOT EXISTS "${lib_path}")
-            message(FATAL_ERROR "Target ${lib} given to install_deps() contained bad path ${lib_path}")
+            message(FATAL_ERROR
+                "Target ${lib} given to install_deps() contained bad path ${lib_path}"
+            )
         endif()
 
         if(is_multiconfig)
@@ -308,8 +332,9 @@ endfunction()
 
 
 # Helper function for _install_deps_internal: convert given list of libs into file paths.
-function(_install_deps_get_paths_from_libs lib_dest runtime_dest component out_paths_name out_libs_name prefixes_name out_imports_name)
-    # Check to see if we're building with a multi-config generator (like Visual Studio or XCode) or not.
+function(_install_deps_get_paths_from_libs lib_dest runtime_dest component out_paths_name
+  out_libs_name prefixes_name out_imports_name)
+    # Check to see if we're building with a multi-config generator (like Visual Studio or XCode).
     get_property(is_multiconfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 
     set(automode LIMITED)
@@ -322,20 +347,22 @@ function(_install_deps_get_paths_from_libs lib_dest runtime_dest component out_p
 
     set(out_libs)
     foreach(lib IN LISTS ${out_libs_name})
-        # Skip empty list elements, as well as "optimized" and "debug" keywords that might be in a <NAME>_LIBRARIES variable.
+        # Skip empty list elements, as well as "optimized" and "debug" keywords that might be in a
+        # <NAME>_LIBRARIES variable.
         if((NOT lib) OR (lib STREQUAL "optimized") OR (lib STREQUAL "debug"))
             continue()
         endif()
 
-        # If this library was marked as config-specific by a previous run, split off the config tag for later use.
+        # If this library was marked as config-specific by a previous run, split off the config tag
+        #for later use.
         _install_deps_take_libtag(lib libtag)
         if(NOT is_multiconfig)
             set(libtag)
         endif()
 
         if(TARGET "${lib}")
-            # If this is an alias target, get the proper name of the target, then add the result back
-            # onto the list of libs to process on the next invocation of this function.
+            # If this is an alias target, get the proper name of the target, then add the result
+            # back onto the list of libs to process on the next invocation of this function.
             #
             # Make sure we keep the libtag the same, if the original target had one.
             get_target_property(alias ${lib} ALIASED_TARGET)
@@ -389,33 +416,37 @@ function(_install_deps_get_paths_from_libs lib_dest runtime_dest component out_p
                     endif()
                     foreach(prop ${props})
                         get_target_property(dep_libs ${lib} ${prop})
-                        if(dep_libs)
-                            foreach(lib ${dep_libs})
-                                if(lib MATCHES "([^ \t:]+)::[^ \t]+" AND TARGET ${lib})
-                                    if(lib IN_LIST INSTALL_DEPS_EXCLUDE_LIST)
-                                        continue()
-                                    endif()
-                                    if(automode STREQUAL "ALL" OR "${CMAKE_MATCH_1}" IN_LIST ${prefixes_name})
-                                        list(APPEND out_libs "${subtag}${lib}")
-                                    endif()
-                                endif()
-                            endforeach() #loop over dep_libs
+                        if(NOT dep_libs)
+                            continue()
                         endif()
+                        foreach(lib ${dep_libs})
+                            if(lib IN_LIST INSTALL_DEPS_EXCLUDE_LIST)
+                                continue()
+                            endif()
+                            if(NOT (lib MATCHES "([^ \t:]+)::[^ \t]+" AND TARGET ${lib}))
+                                continue()
+                            endif()
+                            if(automode STREQUAL "ALL" OR
+                              "${CMAKE_MATCH_1}" IN_LIST ${prefixes_name})
+                                list(APPEND out_libs "${subtag}${lib}")
+                            endif()
+                        endforeach() #loop over dep_libs
                     endforeach() #loop over props
                 endforeach() #loop over modes
             endif()
 
-            # If this target isn't a shared, module, interface, or unknown imported library target, skip it silently
-            # without doing anything.
+            # If this target isn't a shared, module, interface, or unknown imported library target,
+            # skip it silently without doing anything.
             get_target_property(type ${lib} TYPE)
             if(NOT type STREQUAL "SHARED_LIBRARY" AND
                NOT type STREQUAL "MODULE_LIBRARY" AND
                NOT type STREQUAL "INTERFACE_LIBRARY" AND
-               NOT type STREQUAL "UNKNOWN_LIBRARY")  #UNKNOWN is a special type that only applies to import libraries.
+               NOT type STREQUAL "UNKNOWN_LIBRARY") #UNKNOWN is only seen on import libraries.
                 continue()
             endif()
 
-            # If this target isn't imported, install directly if shared or module, then skip regardless of type.
+            # If this target isn't imported, install directly if shared or module, then skip
+            # regardless of type.
             if(NOT is_imported)
                 if(type STREQUAL "SHARED_LIBRARY" OR type STREQUAL "MODULE_LIBRARY")
                     install(TARGETS ${lib}
@@ -430,14 +461,16 @@ function(_install_deps_get_paths_from_libs lib_dest runtime_dest component out_p
             # Add this imported library to our list of import targets.
             list(APPEND ${out_imports_name} "${libtag}${lib}")
 
-            # If this was an imported interface library, nothing left to do after we read from the properties.
+            # If this was an imported interface library, nothing left to do after we read from the
+            # properties.
             if(type STREQUAL "INTERFACE_LIBRARY")
                 continue()
             endif()
 
-            # For shared/module/unknown imported libs, get the imported location (should be DLL, on Windows).
-            # Add to list of paths.
-            _install_deps_append_paths_from_imported(${out_paths_name} "${lib}" "${libtag}" "${is_multiconfig}")
+            # For shared/module/unknown imported libs, get the imported location (should be DLL, on
+            # Windows). Add to list of paths.
+            _install_deps_append_paths_from_imported(${out_paths_name} "${lib}" "${libtag}"
+                "${is_multiconfig}")
         elseif(lib)
             # Handling for if this lib is a file path.
             if (NOT EXISTS "${lib}")
@@ -459,11 +492,12 @@ endfunction()
 # ARGN == list of import libs that were returned by _install_deps_get_paths_from_libs().
 function(_install_deps_get_qt_extra_paths lib_dest runtime_dest component out_paths_name)
     set(tagged_imports ${ARGN})
-    if((NOT tagged_imports) OR (NOT TARGET Qt5::Core) OR NOT ("${tagged_imports}" MATCHES "Qt[0-9]+::"))
+    if((NOT tagged_imports) OR (NOT TARGET Qt5::Core)
+      OR (NOT ("${tagged_imports}" MATCHES "Qt[0-9]+::")))
         return()
     endif()
 
-    # Check to see if we're building with a multi-config generator (like Visual Studio or XCode) or not.
+    # Check to see if we're building with a multi-config generator (like Visual Studio or XCode).
     get_property(is_multiconfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 
     # Remove any libtags from the list of import libraries. None of the stuff we add in here
@@ -478,9 +512,15 @@ function(_install_deps_get_qt_extra_paths lib_dest runtime_dest component out_pa
     #   Remove last directory ("lib") from path.
     get_filename_component(qt5_root "${qt5_root}" DIRECTORY)
 
-    # For each Qt lib we support, add any required plugin targets to "plugins", and add any required
-    # libraries to "to_add". The plugins will be installed directly, while the libs in "to_add" will
-    # get appended onto out_paths at the bottom of the function, so that SONAME softlinks will be
+    if(WIN32)
+        set(libdir "${qt5_root}/bin")
+    else()
+        set(libdir "${qt5_root}/lib")
+    endif()
+
+    # For each Qt lib we support, add any plugin targets to "plugins", and add any libraries to
+    # "to_add". The plugins will be installed directly, while the libs in "to_add" will get
+    # appended onto out_paths at the bottom of the function, so that SONAME softlinks will be
     # created as needed.
     set(plugins)
     set(to_add)
@@ -489,10 +529,10 @@ function(_install_deps_get_qt_extra_paths lib_dest runtime_dest component out_pa
     if("Qt5::Core" IN_LIST imports)
         # Install any extra libs needed by Qt5::Core.
         if(NOT WIN32 AND NOT APPLE) # Linux
-            # Qt can't rely on OS libs for internationalization on Linux, because Linux uses ICU, which
-            # doesn't have a stable shared-library interface. So, Qt is built against one specific
-            # version of ICU that must be bundled alongside its libraries. It has to be the exact
-            # version bundled with Qt, so that the ABI matches.
+            # Qt can't rely on OS libs for internationalization on Linux, because Linux uses ICU,
+            # which doesn't have a stable shared-library interface. So, Qt is built against one
+            # specific version of ICU that must be bundled alongside its libraries. It has to be
+            # the exact version bundled with Qt, so that the ABI matches.
             list(APPEND to_add
                 libicui18n.so
                 libicuuc.so
@@ -511,10 +551,34 @@ function(_install_deps_get_qt_extra_paths lib_dest runtime_dest component out_pa
             list(APPEND plugins Qt5::QXcbIntegrationPlugin)
         endif()
 
+        if(WIN32 AND INSTALL_DEPS_QT_INCLUDE_SOFTWARE_GL)
+            # Install OpenGL software rasterizer, if requested by caller.
+            # There is no debug version of this library to worry about.
+            list(APPEND to_add
+                opengl32sw.dll
+            )
+        endif()
+        if(WIN32 AND INSTALL_DEPS_QT_INCLUDE_ANGLE_GL)
+            # If caller requested that we install ANGLE, add dll for the Direct3D HLSL compiler.
+            # Not explicitly listed as a dependency, but it's required for ANGLE libraries to work.
+            # There is no debug version of this library to worry about.
+            #
+            # NOTE: haven't verified that this is needed, just going by the Qt deployment guide.
+            file(GLOB d3dcompiler LIST_DIRECTORIES FALSE RELATIVE "${libdir}"
+                "${libdir}/d3dcompiler_*.dll"
+            )
+            if(d3dcompiler)
+                list(GET d3dcompiler 0 d3dcompiler)
+                list(APPEND to_add
+                    ${d3dcompiler}
+                )
+            endif()
+        endif()
+
         # Install any extra libs needed by Qt5::Gui.
-        if(NOT WIN32 AND NOT APPLE) # Linux
-            # Linux XCB platform plugin requires a few additional libraries that aren't listed as deps
-            # in Qt5's exported config files.
+        if(NOT WIN32 AND NOT APPLE)
+            # Linux XCB platform plugin requires a few additional libraries that aren't listed as
+            # deps in Qt5's exported config files.
             list(APPEND to_add
                 libQt5DBus.so
                 libQt5XcbQpa.so
@@ -535,7 +599,7 @@ function(_install_deps_get_qt_extra_paths lib_dest runtime_dest component out_pa
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     # Add prefix to each lib name we want to add, then append to out_paths.
-    list(TRANSFORM to_add PREPEND "${qt5_root}/lib/")
+    list(TRANSFORM to_add PREPEND "${libdir}/")
     foreach(lib IN LISTS to_add)
         if(EXISTS ${lib})
             list(APPEND ${out_paths_name} ${lib})
@@ -546,14 +610,16 @@ function(_install_deps_get_qt_extra_paths lib_dest runtime_dest component out_pa
     set(plugin_paths)
     foreach(plugin ${plugins})
         if(NOT TARGET ${plugin})
-            message(AUTHOR_WARNING "Expected plugin ${plugin} is not a valid target, so it won't be installed.")
+            message(AUTHOR_WARNING
+                "Expected plugin ${plugin} is not a valid target, so it won't be installed."
+            )
             continue()
         endif()
         _install_deps_append_paths_from_imported(plugin_paths "${plugin}" "" "${is_multiconfig}")
     endforeach()
 
-    # Install each tagged plugin path directly - can't just add them to out_paths, because we have to
-    # install the plugins to special subdirs under runtime_dest.
+    # Install each tagged plugin path directly - can't just add them to out_paths, because we have
+    # to install the plugins to special subdirs under runtime_dest.
     foreach(path ${plugin_paths})
         _install_deps_take_libtag(path libtag)
 
@@ -581,7 +647,8 @@ function(_install_deps_get_qt_extra_paths lib_dest runtime_dest component out_pa
 endfunction()
 
 
-# Helper function for _install_deps_internal: retrieve soname of given lib file. If no soname, returns empty string.
+# Helper function for _install_deps_internal: retrieve soname of given lib file. If no soname,
+# returns empty string.
 function(_install_deps_read_soname outvarname path)
     # Set output variable to empty string - this is what will be returned on an error.
     set(${outvarname} "" PARENT_SCOPE)
@@ -620,7 +687,8 @@ endfunction()
 
 
 # Helper function for install_deps.
-# _install_deps_internal([lib dest] [runtime dest] [flag to turn file copy on/off] [flag to turn file install on/off] [... lib files or import targets ...]
+# _install_deps_internal([lib dest] [runtime dest] [flag to turn file copy on/off]
+#     [flag to turn file install on/off] [... lib files or import targets ...]
 function(_install_deps_internal lib_dest runtime_dest component do_copy do_install)
     if((NOT do_copy) AND (NOT do_install))
         return()
@@ -657,15 +725,15 @@ function(_install_deps_internal lib_dest runtime_dest component do_copy do_insta
     # import libs, and import lib dependencies into full paths. Will also filter out unwanted
     # stuff like static library targets.
     #
-    # On each loop, this function removes everything from 'libs' and processes each item.
-    # Paths get added to lib_paths. Non-imported targets are installed directly. Imported targets
-    # are processed to calculate the path, then this path is added to 'lib_paths'.
+    # On each loop, this function removes everything from 'libs' and processes each item. Paths
+    # get added to lib_paths. Non-imported targets are installed directly. Imported targets are
+    # processed to calculate the path, then this path is added to 'lib_paths'.
     #
-    # Any automatically detected sub-dependencies or resolved alias targets are added to 'libs'
-    # to be processed on the next iteration of the loop. The loop stops when 'libs' is empty.
+    # Any automatically detected sub-dependencies or resolved alias targets are added to 'libs' to
+    # be processed on the next iteration of the loop. The loop stops when 'libs' is empty.
     #
-    # If this is a multiconfig generator, paths of libraries that should only be installed in
-    # DEBUG or NOTDEBUG configurations are prefixed by a tag: @DEBUG@ or @NOTDEBUG@.
+    # If this is a multiconfig generator, paths of libraries that should only be installed in DEBUG
+    # or NOTDEBUG configurations are prefixed by a tag: @DEBUG@ or @NOTDEBUG@.
     set(imports)
     while(libs)
         _install_deps_get_paths_from_libs("${lib_dest}" "${runtime_dest}" "${component}"
@@ -684,12 +752,13 @@ function(_install_deps_internal lib_dest runtime_dest component do_copy do_insta
         ${imports}
     )
 
-    # Remove any obvious duplicates. This won't catch different symlinks that refer to the same file,
-    # or the same files installed on different calls to install_deps(). However, duplicates don't
-    # actually hurt anything, they just make cmake's output during an install noisier to look at.
-    # So, it's OK that we don't catch 100% of duplicates, since it's just to make things look nicer.
+    # Remove any obvious duplicates. This won't catch different symlinks that refer to the same
+    # file, or the same files installed on different calls to install_deps(). However, duplicates
+    # don't actually hurt anything, they just make cmake's output during an install noisier to look
+    # at. So, it's OK that we don't catch 100% of duplicates, since it's just to make things look
+    # nicer.
     #
-    #   NOTE: if we wanted to catch 100% of duplicates, we could. It would just take more code.
+    # NOTE: if we wanted to catch 100% of duplicates, we could. It would just take more code.
     list(REMOVE_DUPLICATES lib_paths)
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -707,15 +776,18 @@ function(_install_deps_internal lib_dest runtime_dest component do_copy do_insta
             set(libtag)
         endif()
 
-        # If on Windows, try to replace import libraries with DLL's. Throws fatal error if it can't do it.
+        # If on Windows, try to replace import libraries with DLL's. Throws fatal error if it can't
+        # do it.
         if(WIN32 AND (${path} MATCHES "\.lib$" OR ${path} MATCHES "\.a$"))
            _install_deps_get_dll_from_implib(path "${path}")
         endif()
 
-        # Resolve any symlinks in path to get actual physical name. If relative, evaluate relative to current binary dir.
+        # Resolve any symlinks in path to get actual physical name. If relative, evaluate relative
+        # to current binary dir.
         get_filename_component(path "${path}" REALPATH BASE_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
-        # Figure out the destination (DLL's and manifest files go to runtime_dest, everything else goes to lib_dest).
+        # Figure out the destination (DLL's and manifest files go to runtime_dest, everything else
+        # goes to lib_dest).
         if(path MATCHES "\.[dD][lL][lL]$" OR path MATCHES "\.[mM][aA][nN][iI][fF][eE][sS][tT]$")
             set(dest "${runtime_dest}")
             if(path MATCHES "\.[dD][lL][lL]$")
@@ -724,13 +796,15 @@ function(_install_deps_internal lib_dest runtime_dest component do_copy do_insta
                 set(type FILES) # install manifests as a normal non-executable file
             endif()
 
-            # If requested by caller, copy the DLL's to the build dir in addition to installing them.
-            # If the file with the same name and timestamp already exists at the destination, nothing will be copied.
+            # If requested by caller, copy the DLL's to the build dir in addition to installing
+            # them. If the file with the same name and timestamp already exists at the destination,
+            # nothing will be copied.
             if(do_copy AND type STREQUAL PROGRAMS)
                 if(is_multiconfig)
                     set(configs)
                     if(libtag)
-                        # If this wasn't a general-use library, only copy it to the proper configurations.
+                        # If this wasn't a general-use library, only copy it to the proper
+                        # configurations.
                         if(libtag STREQUAL "@DEBUG@")
                             # Copy to "Debug" directory only.
                             foreach(config ${CMAKE_CONFIGURATION_TYPES})
@@ -751,7 +825,8 @@ function(_install_deps_internal lib_dest runtime_dest component do_copy do_insta
                             endforeach()
                         endif()
                     else()
-                        # If this was a general-use library (no libtag), copy it to every configuration.
+                        # If this was a general-use library (no libtag), copy it to every
+                        # configuration.
                         set(configs ${CMAKE_CONFIGURATION_TYPES})
                     endif()
                     foreach(config ${configs})
@@ -782,7 +857,8 @@ function(_install_deps_internal lib_dest runtime_dest component do_copy do_insta
         endif()
         install(${type} "${to_inst}" DESTINATION "${dest}" ${component})
 
-        # If the library has a soname that's different than the actual name of the file on disk, add a symlink.
+        # If the library has a soname that's different than the actual name of the file on disk,
+        # add a symlink.
         _install_deps_read_soname(soname "${path}")
         if(soname)
             get_filename_component(libname "${path}" NAME)
@@ -804,7 +880,9 @@ function(_install_deps_internal lib_dest runtime_dest component do_copy do_insta
                 )
 
                 if(NOT res EQUAL 0)
-                    message(AUTHOR_WARNING "install_deplib: failed to create install symlink for \"${libname}\"")
+                    message(AUTHOR_WARNING
+                        "install_deplib: failed to create install symlink for \"${libname}\""
+                    )
                     continue()
                 endif()
 
@@ -824,6 +902,7 @@ function(_install_deps_internal lib_dest runtime_dest component do_copy do_insta
 endfunction()
 
 
+# Helper function for install_deps_system(): retrieves list of debug versions of system libraries.
 function(_install_deps_get_debug_system_libraries out_varname)
     set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE)
     set(CMAKE_INSTALL_DEBUG_LIBRARIES          TRUE)
@@ -854,17 +933,37 @@ function(_install_deps_get_debug_system_libraries out_varname)
 endfunction()
 
 
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# Public functions (for users).
+
 # install_deps([lib dest] [runtime dest] [... lib files or import targets ...]
 function(install_deps lib_dest runtime_dest)
-    # Handle default values for variables that control DLL copying.
-    if(NOT DEFINED INSTALL_DEPS_COPY_DLL)
-        set(INSTALL_DEPS_COPY_DLL TRUE)
-    endif()
-
     set(libs ${ARGN})
     if(NOT libs)
         return()
     endif()
+
+    # Handle default values for variables that default to TRUE.
+    foreach(var
+      INSTALL_DEPS_COPY_DLL
+      INSTALL_DEPS_QT_INCLUDE_ANGLE_GL
+      )
+        if(NOT DEFINED ${var})
+            set(${var} TRUE)
+        endif()
+    endforeach()
+
+    # Add graphics libs pulled in by Qt to the exclude list, if they're not needed. Only need these
+    # on Windows when ANGLE is enabled. Shouldn't ever need them on other platforms.
+    if(NOT (WIN32 AND INSTALL_DEPS_QT_INCLUDE_ANGLE_GL))
+        list(APPEND INSTALL_DEPS_EXCLUDE_LIST
+            Qt5::Gui_GL
+            Qt5::Gui_EGL
+            Qt5::Gui_GLESv2
+        )
+    endif()
+    list(REMOVE_DUPLICATES INSTALL_DEPS_EXCLUDE_LIST)
 
     # See if the user passed an optional "COMPONENT [component name]" to the install command.
     # If they did, remove those entries from the 'libs' list and add them to the 'component' list.
@@ -877,19 +976,21 @@ function(install_deps lib_dest runtime_dest)
     endif()
 
     # Call internal helper
-    _install_deps_internal("${lib_dest}" "${runtime_dest}" "${component}" ${INSTALL_DEPS_COPY_DLL} TRUE ${libs})
+    _install_deps_internal("${lib_dest}" "${runtime_dest}" "${component}" ${INSTALL_DEPS_COPY_DLL}
+        TRUE ${libs})
 endfunction()
 
 
 # install_deps_system([lib dest] [runtime dest])
 function(install_deps_system lib_dest runtime_dest)
-    # Check to see if we're building with a multi-config generator (like Visual Studio or XCode) or not.
+    # Check to see if we're building with a multi-config generator (like Visual Studio or XCode).
     get_property(is_multiconfig GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 
     if(OpenMP_FOUND)
         set(CMAKE_INSTALL_OPENMP_LIBRARIES TRUE)
     endif()
-    set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE) # tell module not to install, just save to CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS
+    # Tell module not to install the libs, just report paths in CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS.
+    set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE)
 
     # Before we do anything else, grab list of libraries installed when in debug-only mode.
     set(debug_libs)
