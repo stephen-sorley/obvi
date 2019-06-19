@@ -60,7 +60,7 @@ void obvi::main_window::initializeGL() {
 
     // Point camera at center of object.
     {
-        obvi::bboxf box;
+        bboxf box;
         for(size_t i = 0; i < num_vertices; ++i) {
             const float *vtx = vertex_data + i * 6;
             box.expand(vec3f(vtx[0],vtx[1],vtx[2]));
@@ -196,7 +196,7 @@ void obvi::main_window::release_state() {
 
 void obvi::main_window::update_model() {
     if(animate) {
-        static constexpr float two_pi      = 2.0f * obvi::pi<float>;
+        static constexpr float two_pi      = 2.0f * pi<float>;
         static constexpr float rot_per_sec = 0.5f;
         auto tend = std::chrono::steady_clock::now();
         std::chrono::duration<float> fsec = tend - tstart;
